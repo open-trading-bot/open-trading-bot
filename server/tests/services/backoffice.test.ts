@@ -18,6 +18,7 @@ function createMockDb(users: DbUser[] = []): Db {
     }),
     updateUser: vi.fn(),
     deleteUser: vi.fn(),
+    bumpTokenVersion: vi.fn(),
     getLeads: vi.fn().mockReturnValue([]),
     getTrades: vi.fn().mockReturnValue([]),
     getOpenPositions: vi.fn().mockReturnValue([]),
@@ -364,8 +365,8 @@ describe('BackofficeService — user management', () => {
 
     service.updateUserPassword(5, 'newPass123');
 
-    // blockUser is called internally — verify by checking the user would be blocked
-    // The service calls blockUser(id) which revokes tokens
     expect(db.updateUserPassword).toHaveBeenCalledTimes(1);
+    // Revocation must survive a restart, so it goes through the database.
+    expect(db.bumpTokenVersion).toHaveBeenCalledWith(5);
   });
 });

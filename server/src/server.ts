@@ -8,9 +8,22 @@ import { authMiddleware } from './middleware/auth.js';
 import { API_PATHS, HTTP_STATUS } from './utils/constants.js';
 import logger from './utils/logger.js';
 
-export function createApp(apiKey: string, jwtSecret: string) {
+import type { DbUser } from './db/index.js';
+
+/**
+ * Which proxies may set X-Forwarded-For. The default trusts only private
+ * networks (for example the nginx container). Set TRUST_PROXY to a hop count
+ * or address list when another proxy sits in front of the server.
+ */
+export function trustProxySetting(value = process.env.TRUST_PROXY): string | number {
+  if (value === undefined || value.trim() === '') return 'loopback, linklocal, uniquelocal';
+  return /^\d+$/.test(value.trim()) ? Number(value) : value;
+}
+
+export function createApp(apiKey: string, jwtSecret: string, getUser: (id: number) => DbUser | null) {
   const app = express();
   const server = http.createServer(app);
+  app.set('trust proxy', trustProxySetting());
 
   app.use(cors());
   app.use(express.json());
@@ -18,7 +31,7 @@ export function createApp(apiKey: string, jwtSecret: string) {
     logger.info(`[api] ${req.method} ${req.path}`);
     next();
   });
-  app.use(authMiddleware(apiKey, jwtSecret));
+  app.use(authMiddleware(apiKey, jwtSecret, getUser));
 
   return { app, server };
 }

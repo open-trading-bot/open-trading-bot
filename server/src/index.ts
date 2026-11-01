@@ -14,8 +14,9 @@ const env = loadEnv();
 const db = createDb('./data/trading.db');
 seedUsers(db, env.adminUser, env.adminPass, process.env.SEED_DEMO_USERS === 'true');
 
-const { app, server } = createApp(env.apiKey, env.jwtSecret);
-const broadcaster = createWsServer(server, env.jwtSecret, env.apiKey);
+const getUser = (id: number) => db.getUserById(id);
+const { app, server } = createApp(env.apiKey, env.jwtSecret, getUser);
+const broadcaster = createWsServer(server, env.jwtSecret, env.apiKey, getUser);
 
 const botManager = createBotManager(db, broadcaster, env.jwtSecret);
 

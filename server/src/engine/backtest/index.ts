@@ -37,6 +37,14 @@ function calculateStats(trades: BacktestTrade[]): { totalReturn: number; winRate
   };
 }
 
+/**
+ * Candles that each strategy call sees. The live bot fetches 100 candles per
+ * tick, so the backtest uses the same window. A full-history slice per candle
+ * made the backtest O(n^2): 30 days of 1m candles blocked the event loop for
+ * minutes.
+ */
+export const STRATEGY_WINDOW = 100;
+
 export function runBacktest(input: BacktestInput): BacktestResult {
   const strategy = getStrategy(input.strategyId);
   if (!strategy) throw new Error(`Strategy ${input.strategyId} not found`);
@@ -48,7 +56,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
   let maxDrawdown = 0;
 
   for (let i = 20; i < input.candles.length; i++) {
-    const slice = input.candles.slice(0, i + 1);
+    const slice = input.candles.slice(Math.max(0, i + 1 - STRATEGY_WINDOW), i + 1);
     const signal = strategy.analyze(slice, input.params, input.symbol, input.marketType);
 
     if (position && signal.action !== 'hold' && signal.action !== position.side) {
