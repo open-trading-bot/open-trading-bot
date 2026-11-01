@@ -1,0 +1,283 @@
+@import "tailwindcss";
+@import "common/src/styles/index.css";
+
+/* Override Chrome autofill styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1f2937 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+}
+
+/* Hide search input clear button */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* Login page always uses dark theme colors */
+.light .login-bg .text-white { color: #ffffff !important; }
+.light .login-bg .text-gray-100 { color: #f3f4f6 !important; }
+.light .login-bg .text-gray-400 { color: #9ca3af !important; }
+.light .login-bg .text-gray-500 { color: #6b7280 !important; }
+.light .login-bg .text-gray-600 { color: #4b5563 !important; }
+.light .login-bg input { color: #ffffff !important; }
+.light .login-bg input::placeholder { color: #9ca3af !important; }
+
+/* Login page gradient background — Stripe-inspired mesh */
+.login-bg {
+  background: #0a0e27;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg .mesh-layer {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+}
+
+.login-bg .mesh-1 {
+  background: radial-gradient(circle at 30% 40%, rgba(99, 102, 241, 0.35) 0%, transparent 50%);
+  animation: mesh1 12s ease-in-out infinite;
+}
+
+.login-bg .mesh-2 {
+  background: radial-gradient(circle at 70% 60%, rgba(56, 189, 248, 0.25) 0%, transparent 50%);
+  animation: mesh2 15s ease-in-out infinite;
+}
+
+.login-bg .mesh-3 {
+  background: radial-gradient(circle at 50% 20%, rgba(168, 85, 247, 0.3) 0%, transparent 50%);
+  animation: mesh3 18s ease-in-out infinite;
+}
+
+.login-bg .mesh-4 {
+  background: radial-gradient(circle at 20% 80%, rgba(236, 72, 153, 0.2) 0%, transparent 50%);
+  animation: mesh4 20s ease-in-out infinite;
+}
+
+.login-bg .mesh-5 {
+  background: radial-gradient(circle at 80% 30%, rgba(34, 211, 238, 0.2) 0%, transparent 50%);
+  animation: mesh5 14s ease-in-out infinite;
+}
+
+@keyframes mesh1 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(8%, -6%) rotate(5deg); }
+  66% { transform: translate(-4%, 8%) rotate(-3deg); }
+}
+
+@keyframes mesh2 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(-10%, 5%) rotate(-4deg); }
+  66% { transform: translate(6%, -8%) rotate(6deg); }
+}
+
+@keyframes mesh3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(6%, 10%) scale(1.1); }
+  50% { transform: translate(-5%, 4%) scale(0.95); }
+  75% { transform: translate(3%, -8%) scale(1.05); }
+}
+
+@keyframes mesh4 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(12%, -10%) rotate(8deg); }
+}
+
+@keyframes mesh5 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-8%, 6%) scale(1.15); }
+  66% { transform: translate(5%, -5%) scale(0.9); }
+}
+
+/* Animated wave layers */
+.login-bg .wave {
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.login-bg .wave svg {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+}
+
+.login-bg .wave-1 svg {
+  animation: wave-drift 25s linear infinite;
+  opacity: 0.08;
+}
+
+.login-bg .wave-2 svg {
+  animation: wave-drift 20s linear infinite reverse;
+  opacity: 0.06;
+}
+
+.login-bg .wave-3 svg {
+  animation: wave-drift 30s linear infinite;
+  opacity: 0.04;
+}
+
+@keyframes wave-drift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+/* Floating crypto symbols */
+.login-bg .crypto-symbols {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.login-bg .crypto-symbol {
+  position: absolute;
+  font-size: 2.5rem;
+  color: white;
+  opacity: 0.15;
+  animation: symbol-float var(--duration) ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes symbol-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-30px) rotate(5deg); }
+  50% { transform: translateY(-10px) rotate(-3deg); }
+  75% { transform: translateY(-25px) rotate(2deg); }
+}
+
+/* Bot control button animations */
+.bot-btn {
+  transform: scale(1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bot-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.bot-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Start button idle shimmer — blue tint */
+.bot-btn-start::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(59,130,246,0.06) 25%,
+    rgba(99,102,241,0.12) 50%,
+    rgba(59,130,246,0.06) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: btn-shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.light .bot-btn-start::before {
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(59,130,246,0.05) 25%,
+    rgba(99,102,241,0.1) 50%,
+    rgba(59,130,246,0.05) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes btn-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Shine sweep on hover */
+.bot-btn-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.2) 42%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.2) 58%, transparent 65%);
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+.bot-btn:hover .bot-btn-shine {
+  animation: btn-shine 0.7s ease-out forwards;
+}
+
+.bot-btn-shine-active {
+  animation: none !important;
+  opacity: 0;
+}
+
+@keyframes btn-shine {
+  to { transform: translateX(100%); }
+}
+
+/* Starting pulse glow — blue */
+.bot-btn-starting {
+  animation: btn-pulse-start 1.2s ease-in-out infinite;
+}
+
+.bot-btn-starting::before {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes btn-pulse-start {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6), 0 0 70px rgba(99, 102, 241, 0.25); }
+}
+
+.light .bot-btn-starting {
+  animation: btn-pulse-start-light 1.2s ease-in-out infinite;
+}
+
+@keyframes btn-pulse-start-light {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.5), 0 0 70px rgba(99, 102, 241, 0.2); }
+}
+
+/* Stopping fade animation */
+.bot-btn-stopping {
+  animation: btn-pulse-stop 1s ease-in-out infinite;
+}
+
+@keyframes btn-pulse-stop {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Kill shake animation */
+.bot-btn-killing {
+  animation: btn-shake-kill 0.4s ease-in-out infinite;
+}
+
+@keyframes btn-shake-kill {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* Page transition — fade + slight rise, used by paginated tables */
+@keyframes page-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-page-fade {
+  animation: page-fade 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

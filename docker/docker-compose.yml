@@ -1,0 +1,42 @@
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: server
+    env_file: .env.production
+    volumes:
+      - server-data:/app/data
+      - server-logs:/app/logs
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  client:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  backoffice:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: backoffice
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  server-data:
+  server-logs:
