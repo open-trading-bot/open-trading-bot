@@ -11,7 +11,9 @@ import type { BotConfig } from '../../../src/types/index.js';
 // bullish crossover signal with very high confidence.
 function bullishCrossoverCandles() {
   const candles = [];
-  const now = Date.now();
+  // One 5m interval in the past, so every candle is closed. The orchestrator
+  // ignores a forming candle.
+  const now = Date.now() - 5 * 60_000;
   for (let i = 0; i < 28; i++) {
     candles.push({
       timestamp: now - (30 - i) * 60_000,

@@ -5,18 +5,16 @@ import { DEFAULTS, ERROR_MSG } from '../utils/constants.js';
 import { PublicError } from '../utils/errors.js';
 import { runBacktest as executeBacktest, type BacktestResult } from '../engine/backtest/index.js';
 import { getStrategy } from '../engine/strategies/index.js';
+import { closedCandlesOnly, intervalToMs } from '../utils/candles.js';
 
 export interface BacktestService {
   run(userId: number, symbol: string, strategyId: string, interval: string, from?: number, to?: number, marketType?: MarketType): Promise<BacktestResult>;
 }
 
-const UNIT_MS: Record<string, number> = { m: 60_000, h: 3_600_000, d: 86_400_000, w: 604_800_000, M: 2_592_000_000 };
-
 /** Number of candles of `interval` in [fromTs, toTs], or null for an unknown interval format. */
 export function expectedCandleCount(interval: string, fromTs: number, toTs: number): number | null {
-  const m = /^(\d+)([mhdwM])$/.exec(interval);
-  if (!m) return null;
-  const step = Number(m[1]) * UNIT_MS[m[2]];
+  const step = intervalToMs(interval);
+  if (step === null) return null;
   return Math.max(1, Math.ceil((toTs - fromTs) / step));
 }
 
@@ -38,7 +36,7 @@ export function createBacktestService(db: Db, botManager: BotManager): BacktestS
         db.insertCandles(symbol, interval, candles);
       }
       const defaultParams = strat.defaultParams ?? {};
-      return executeBacktest({ strategyId, candles, symbol, marketType, tradeAmount: DEFAULTS.BACKTEST_TRADE_AMOUNT, params: defaultParams });
+      return executeBacktest({ strategyId, candles: closedCandlesOnly(candles, interval), symbol, marketType, tradeAmount: DEFAULTS.BACKTEST_TRADE_AMOUNT, params: defaultParams });
     },
   };
 }

@@ -6,6 +6,7 @@ import type { BotConfig, BotStatus, CloseReason, Position, Signal, Trade } from 
 import { getStrategy } from '../strategies/index.js';
 import { createRiskManager, type RiskManager } from '../risk/index.js';
 import logger from '../../utils/logger.js';
+import { closedCandlesOnly } from '../../utils/candles.js';
 import { WS_EVENTS, ERROR_MSG } from '../../utils/constants.js';
 
 export interface Orchestrator {
@@ -145,7 +146,7 @@ export function createOrchestrator(
       const candles = await exchange.fetchCandles(symbol, interval);
       logger.debug(`[tick] Got ${candles.length} candles for ${symbol} (${interval})`);
       db.insertCandles(symbol, interval, candles);
-      candlesByInterval.set(interval, candles);
+      candlesByInterval.set(interval, closedCandlesOnly(candles, interval));
     }
 
     const signals: Signal[] = [];

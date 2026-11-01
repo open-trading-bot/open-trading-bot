@@ -57,3 +57,16 @@ describe('Backtest data coverage (P2)', () => {
     expect(exchange.fetchCandles).not.toHaveBeenCalled();
   });
 });
+
+describe('Backtest uses closed candles only', () => {
+  it('drops a forming last candle before it runs', async () => {
+    const hour = 3_600_000;
+    const formingStart = Math.floor(Date.now() / hour) * hour;
+    const data = Array.from({ length: 720 }, (_, i) => ({ timestamp: formingStart - (719 - i) * hour, open: 1, high: 1, low: 1, close: 1, volume: 1 }));
+    const db = { getCandles: vi.fn().mockReturnValue(data), insertCandles: vi.fn() } as any;
+    const botManager = { getExchange: vi.fn(), getReadExchange: vi.fn() } as any;
+    const result = await createBacktestService(db, botManager).run(1, 'BTC/USDT', 'rsi', '1h');
+    const lastEquity = result.equity[result.equity.length - 1];
+    expect(lastEquity.timestamp).toBe(formingStart - hour);
+  });
+});
