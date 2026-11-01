@@ -1,6 +1,7 @@
 // client/src/components/TopBar.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore } from '../stores/bot';
 import { getWallet, connectWallet as apiConnectWallet, disconnectWallet as apiDisconnectWallet } from '../lib/api';
 import { useLanguageStore, useAuthStore } from 'common';
@@ -11,7 +12,7 @@ declare global { interface Window { ethereum?: any } }
 const WALLET_SIGN_MESSAGE = 'Sign this message to connect your wallet to Trading Bot.\n\nThis does not cost any gas fees.';
 
 function useNextTickCountdown() {
-  const { status, lastTickAt, tickInterval } = useBotStore();
+  const { status, lastTickAt, tickInterval } = useBotStore(useShallow((s) => ({ status: s.status, lastTickAt: s.lastTickAt, tickInterval: s.tickInterval })));
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ function useNextTickCountdown() {
 }
 
 export function TopBar() {
-  const { ready, status, mode, testnet, totalBalance, totalEquity, dailyPnl, portfolioLoaded, balancesHidden, toggleBalancesHidden } = useBotStore();
+  const { ready, status, mode, testnet, totalBalance, totalEquity, dailyPnl, portfolioLoaded, balancesHidden, toggleBalancesHidden } = useBotStore(useShallow((s) => ({ ready: s.ready, status: s.status, mode: s.mode, testnet: s.testnet, totalBalance: s.totalBalance, totalEquity: s.totalEquity, dailyPnl: s.dailyPnl, portfolioLoaded: s.portfolioLoaded, balancesHidden: s.balancesHidden, toggleBalancesHidden: s.toggleBalancesHidden })));
   const secondsLeft = useNextTickCountdown();
   const { t } = useLanguageStore();
   const { logout, isDemo, username, email } = useAuthStore();

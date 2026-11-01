@@ -5,13 +5,14 @@ import { TopBar } from './TopBar';
 import { BottomNav } from './BottomNav';
 import { NavLink } from 'react-router-dom';
 import { getStatus, getPortfolio, getPortfolioBalance, getPositions, getTrades } from '../lib/api';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore } from '../stores/bot';
 import { useFeatureFlagStore } from '../stores/featureFlags';
 import { useThemeStore, useLanguageStore, languages, useWebSocket } from 'common';
 import { setFaviconStatus } from '../utils/favicon';
 
 export function Layout() {
-  const { setStatus, setMode, setTestnet, setReady, setLastTickAt, setTickInterval, addSignal, addTrade, updatePosition, setPortfolio, setPositions, setTrades } = useBotStore();
+  const { setStatus, setMode, setTestnet, setReady, setLastTickAt, setTickInterval, addSignal, addSignals, addTrade, updatePosition, setPortfolio, setPositions, setTrades } = useBotStore(useShallow((s) => ({ setStatus: s.setStatus, setMode: s.setMode, setTestnet: s.setTestnet, setReady: s.setReady, setLastTickAt: s.setLastTickAt, setTickInterval: s.setTickInterval, addSignal: s.addSignal, addSignals: s.addSignals, addTrade: s.addTrade, updatePosition: s.updatePosition, setPortfolio: s.setPortfolio, setPositions: s.setPositions, setTrades: s.setTrades })));
   const botStatus = useBotStore((s) => s.status);
   const botMode = useBotStore((s) => s.mode);
   const { theme } = useThemeStore();
@@ -83,6 +84,10 @@ export function Layout() {
       setStatus(d.status);
       setMode(d.mode);
     }
+    if (event.type === 'signals:batch') {
+      addSignals(event.data as any);
+    }
+    // Older servers send one message per signal.
     if (event.type === 'signal:generated') {
       addSignal(event.data as any);
     }

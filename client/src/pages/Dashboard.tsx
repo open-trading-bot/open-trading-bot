@@ -1,6 +1,7 @@
 // client/src/pages/Dashboard.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore, type Signal } from '../stores/bot';
 import { getPortfolio, getPortfolioBalance, getPositions, getTrades, startBot, stopBot, killBot, closePosition, checkExchangeKeyPermissions, getExchangeKeys } from '../lib/api';
 import { CryptoIcon, useLanguageStore, useThemeStore } from 'common';
@@ -56,7 +57,9 @@ export function Dashboard() {
     const id = setInterval(() => setTick((t) => t + 1), TICK_REFRESH_INTERVAL);
     return () => clearInterval(id);
   }, []);
-  const store = useBotStore();
+  // Select only the fields this page reads. Without a selector the page
+  // re-renders on every store change (for example each tick).
+  const store = useBotStore(useShallow((s) => ({ balancesHidden: s.balancesHidden, keyReadOnly: s.keyReadOnly, mode: s.mode, positions: s.positions, setKeyReadOnly: s.setKeyReadOnly, setPortfolio: s.setPortfolio, setPositions: s.setPositions, setStatus: s.setStatus, setTrades: s.setTrades, signals: s.signals, status: s.status, testnet: s.testnet, totalEquity: s.totalEquity, trades: s.trades })));
   const { theme } = useThemeStore();
 
   const [btnAnim, setBtnAnim] = useState<'idle' | 'starting' | 'stopping' | 'killing'>('idle');
