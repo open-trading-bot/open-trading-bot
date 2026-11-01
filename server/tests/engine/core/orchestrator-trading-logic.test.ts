@@ -168,3 +168,25 @@ describe('Orchestrator trading logic', () => {
     expect(positions).toHaveLength(0);
   });
 });
+
+describe('Orchestrator uses closed candles only', () => {
+  it('does not pass the forming candle to strategies', async () => {
+    const seen: number[][] = [];
+    (strategies as Record<string, Strategy>)[STUB_ID] = {
+      ...forcedStrategy,
+      analyze: (candles, p, s, m) => { seen.push(candles.map((x) => x.timestamp)); return forcedStrategy.analyze(candles, p, s, m); },
+    };
+    const step = 300_000; // 5m, same as the test config interval
+    const now = Date.now();
+    const formingStart = Math.floor(now / step) * step;
+    const ex = exchangeMock();
+    (ex.fetchCandles as any).mockResolvedValue(
+      Array.from({ length: 30 }, (_, i) => ({ timestamp: formingStart - (29 - i) * step, open: 1, high: 1, low: 1, close: 1, volume: 1 })),
+    );
+    const orch = createOrchestrator(ex, dbMock([longPosition()]), ws(), config);
+    orch.start();
+    await orch.tick();
+    expect(seen[0]).toHaveLength(29);
+    expect(seen[0]).not.toContain(formingStart);
+  });
+});

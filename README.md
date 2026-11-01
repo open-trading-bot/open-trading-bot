@@ -8,7 +8,7 @@ An algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It has a d
 
 ## Features
 
-- **Trading engine:** runs the strategies at a fixed interval (one "tick"). Strategies: MA crossover, RSI, MACD, Bollinger Bands, Wyckoff. A trade opens only above a minimum confidence.
+- **Trading engine:** runs the strategies at a fixed interval (one "tick"). Strategies: MA crossover, RSI, MACD, Bollinger Bands, Wyckoff. A trade opens only above a minimum confidence. Strategies use closed candles only. The bot ignores the candle that is still open, so a signal does not change inside one candle. Backtests use the same rule.
 - **Risk management:** stop loss, daily loss limit, maximum open positions, kill switch
 - **Paper mode and live mode.** The bot can also use the Bybit testnet.
 - **Backtests** on historical market data

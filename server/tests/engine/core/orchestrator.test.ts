@@ -603,10 +603,11 @@ describe('Orchestrator', () => {
     });
     (exchange.fetchCandles as any).mockResolvedValue([
       ...Array.from({ length: 25 }, (_, i) => ({
-        timestamp: Date.now() - (26 - i) * 60000,
+        // Shifted one 5m interval back so every candle is closed.
+        timestamp: Date.now() - 300_000 - (26 - i) * 60000,
         open: 100, high: 101, low: 99, close: 100, volume: 1000,
       })),
-      { timestamp: Date.now() - 60000, open: 10, high: 11, low: 9, close: 10, volume: 1000 },
+      { timestamp: Date.now() - 360_000, open: 10, high: 11, low: 9, close: 10, volume: 1000 },
     ]);
 
     const orch = createOrchestrator(exchange, db, ws, cfg);
