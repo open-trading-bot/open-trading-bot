@@ -1,7 +1,8 @@
 import type { Db } from '../db/index.js';
 import type { BotManager } from '../engine/bot-manager.js';
 import type { MarketType } from '../types/index.js';
-import { DEFAULTS } from '../utils/constants.js';
+import { DEFAULTS, ERROR_MSG } from '../utils/constants.js';
+import { PublicError } from '../utils/errors.js';
 import { runBacktest as executeBacktest, type BacktestResult } from '../engine/backtest/index.js';
 import { getStrategy } from '../engine/strategies/index.js';
 
@@ -22,6 +23,8 @@ export function expectedCandleCount(interval: string, fromTs: number, toTs: numb
 export function createBacktestService(db: Db, botManager: BotManager): BacktestService {
   return {
     async run(userId, symbol, strategyId, interval, from?, to?, marketType = DEFAULTS.MARKET_TYPE as MarketType) {
+      const strat = getStrategy(strategyId);
+      if (!strat) throw new PublicError(ERROR_MSG.STRATEGY_NOT_FOUND);
       const fromTs = from ?? Date.now() - DEFAULTS.BACKTEST_DAYS * 24 * 60 * 60 * 1000;
       const toTs = to ?? Date.now();
       let candles = db.getCandles(symbol, interval, fromTs, toTs);
@@ -34,8 +37,7 @@ export function createBacktestService(db: Db, botManager: BotManager): BacktestS
         candles = await exchange.fetchCandles(symbol, interval, limit);
         db.insertCandles(symbol, interval, candles);
       }
-      const strat = getStrategy(strategyId);
-      const defaultParams = strat?.defaultParams ?? {};
+      const defaultParams = strat.defaultParams ?? {};
       return executeBacktest({ strategyId, candles, symbol, marketType, tradeAmount: DEFAULTS.BACKTEST_TRADE_AMOUNT, params: defaultParams });
     },
   };

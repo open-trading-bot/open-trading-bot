@@ -2,10 +2,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import http from 'http';
 import type { Router } from 'express';
 import { authMiddleware } from './middleware/auth.js';
-import { API_PATHS, HTTP_STATUS } from './utils/constants.js';
+import { ipAllowListMiddleware } from './middleware/ip-allowlist.js';
+import { API_PATHS, HTTP_STATUS, ERROR_MSG } from './utils/constants.js';
+import { PublicError } from './utils/errors.js';
 import logger from './utils/logger.js';
 
 import type { DbUser } from './db/index.js';
@@ -20,11 +23,40 @@ export function trustProxySetting(value = process.env.TRUST_PROXY): string | num
   return /^\d+$/.test(value.trim()) ? Number(value) : value;
 }
 
+/**
+ * Content-Security-Policy for the API and for the client files that the
+ * server serves (root Dockerfile). The nginx configs in docker/ set the same
+ * policy. The apps load scripts and frames only from reCAPTCHA, and coin icons
+ * from cdn.jsdelivr.net. No upgrade-insecure-requests: it breaks plain HTTP
+ * on localhost.
+ */
+export const CSP_DIRECTIVES = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", 'https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'],
+  frameSrc: ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
+  imgSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net'],
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  fontSrc: ["'self'", 'data:'],
+  connectSrc: ["'self'"],
+  objectSrc: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+  frameAncestors: ["'none'"],
+};
+
 export function createApp(apiKey: string, jwtSecret: string, getUser: (id: number) => DbUser | null) {
   const app = express();
   const server = http.createServer(app);
   app.set('trust proxy', trustProxySetting());
+  app.disable('x-powered-by');
 
+  app.use(helmet({
+    contentSecurityPolicy: { useDefaults: false, directives: CSP_DIRECTIVES },
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    // The TLS proxy (Caddy in docker/) sets HSTS for the public host names.
+    strictTransportSecurity: false,
+  }));
   app.use(cors());
   app.use(express.json());
   // One line per request after the response. Success goes to debug to keep
@@ -40,6 +72,9 @@ export function createApp(apiKey: string, jwtSecret: string, getUser: (id: numbe
     });
     next();
   });
+  // Runs before auth, so a blocked address gets 403 also with a valid token.
+  // Express matches this path without case sensitivity.
+  app.use(API_PATHS.BACKOFFICE, ipAllowListMiddleware(process.env.BACKOFFICE_ALLOWED_IPS));
   app.use(authMiddleware(apiKey, jwtSecret, getUser));
 
   return { app, server };
@@ -63,8 +98,15 @@ export function mountRoutes(app: express.Express, routers: {
   // Error handling middleware
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const errorHandler: express.ErrorRequestHandler = (err, req, res, _next) => {
-    logger.error(`[api-error] ${req.method} ${req.path} — ${err.message}`);
-    res.status(err.status || 400).json({ error: err.message });
+    if (err instanceof PublicError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    // Do not send the error text: it can contain SQL, exchange responses or
+    // parser details. Body parser errors carry a 4xx status.
+    const status = typeof err?.status === 'number' && err.status >= 400 && err.status < 500 ? err.status : HTTP_STATUS.INTERNAL_ERROR;
+    logger.error(`[api-error] ${req.method} ${req.path} — ${err?.stack ?? err}`);
+    res.status(status).json({ error: status === HTTP_STATUS.INTERNAL_ERROR ? ERROR_MSG.INTERNAL_ERROR : ERROR_MSG.INVALID_REQUEST });
   };
   app.use(errorHandler);
 

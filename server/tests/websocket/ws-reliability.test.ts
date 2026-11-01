@@ -3,8 +3,11 @@ import http from 'http';
 import WebSocket from 'ws';
 import { createWsServer, type WsBroadcaster } from '../../src/websocket/index.js';
 import logger from '../../src/utils/logger.js';
+import { signUserToken } from '../../src/utils/jwt.js';
+import type { DbUser } from '../../src/db/index.js';
 
-const API_KEY = 'test-api-key';
+const USER = { id: 1, username: 'u', role: 'regular', enabled: true, tokenVersion: 0 } as DbUser;
+const TOKEN = signUserToken(USER, 'jwt');
 
 let server: http.Server;
 let broadcaster: WsBroadcaster;
@@ -20,7 +23,7 @@ afterEach(async () => {
 
 async function setup(opts: { heartbeatMs?: number; maxBufferedBytes?: number }): Promise<void> {
   server = http.createServer();
-  broadcaster = createWsServer(server, 'jwt', API_KEY, () => null, opts);
+  broadcaster = createWsServer(server, 'jwt', (id) => (id === USER.id ? USER : null), opts);
   await new Promise<void>((resolve) => server.listen(0, () => {
     port = (server.address() as { port: number }).port;
     resolve();
@@ -29,8 +32,9 @@ async function setup(opts: { heartbeatMs?: number; maxBufferedBytes?: number }):
 
 function connect(clientOpts: WebSocket.ClientOptions = {}): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://localhost:${port}/ws?token=${API_KEY}`, clientOpts);
+    const ws = new WebSocket(`ws://localhost:${port}/ws`, clientOpts);
     clients.push(ws);
+    ws.once('open', () => ws.send(JSON.stringify({ type: 'auth', token: TOKEN })));
     ws.once('message', () => resolve(ws));
     ws.once('error', reject);
   });
@@ -68,7 +72,7 @@ describe('WebSocket slow consumer', () => {
 
     const big = 'x'.repeat(4 * 1024 * 1024);
     for (let i = 0; i < 3; i++) {
-      broadcaster.broadcastToUser(0, { type: 'alert', data: { message: big, severity: 'info' } });
+      broadcaster.broadcastToUser(USER.id, { type: 'alert', data: { message: big, severity: 'info' } });
     }
     await wait(500);
 

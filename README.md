@@ -108,9 +108,12 @@ The server does not start without `API_KEY`, `JWT_SECRET`, `EXCHANGE_KEYS_ENC_KE
 | `TICK_INTERVAL` | Time between two ticks, in seconds. Minimum: `10` |
 | `LOG_LEVEL` | Log level: `error`, `warn`, `info` (default) or `debug`. Refer to [Logs](#logs). |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Email settings for user invitations (optional) |
-| `PUBLIC_APP_URL` | Base URL of the dashboard. Invitation links use this URL. |
-| `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY` | reCAPTCHA on login (optional) |
+| `PUBLIC_APP_URL` | Base URL of the dashboard. Invitation links use this URL. When you set it, the reCAPTCHA response must show the same host name. |
+| `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY` | reCAPTCHA keys for the interest form on the login page. Mandatory when `NODE_ENV` is `production`. |
+| `NODE_ENV` | Set `production` on a public server. Then the interest form refuses submissions without `RECAPTCHA_SECRET_KEY`. The Docker images set `production`. |
 | `TRUST_PROXY` | Proxies that can set the client IP (Express `trust proxy`). Default: private networks only. Set it when a proxy outside your network is in front of the server. |
+| `BACKOFFICE_ALLOWED_IPS` | IP addresses and CIDR ranges that can use `/api/backoffice` (optional). Separate the values with spaces. Other addresses receive HTTP 403. The server does not start with a value that is not valid. |
+| `DOMAIN`, `BACKOFFICE_DOMAIN` | Docker only. Host names of the dashboard and the backoffice. Default: `localhost` and `admin.localhost`. |
 | `GIT_COMMIT_SHA` | Build version that the UI shows (optional) |
 
 Use long random values for the secrets. Example: `openssl rand -hex 32`.
@@ -158,19 +161,50 @@ Set `LOG_LEVEL=debug` to also see each candle fetch, each strategy signal and ea
 
 ## Running with Docker
 
-```bash
-cp .env.example docker/.env.production   # then edit the values
-cd docker
-docker compose up --build -d
-```
+The Docker setup has a [Caddy](https://caddyserver.com) container in front of the apps. Caddy requests and renews the TLS certificates automatically. Only Caddy publishes ports: `80` and `443`. Port `80` sends all requests to HTTPS.
 
-- Dashboard: port `80`
-- Backoffice: port `8080`
+### Run on a public server
 
-To deploy to your own server over SSH:
+1. Make two DNS records that point to the server. Example: `bot.example.com` and `admin.bot.example.com`.
+2. Copy `.env.example` to `docker/.env.production`.
+3. In `docker/.env.production`, set the secrets.
+4. Set `DOMAIN` to the dashboard host name.
+5. Set `BACKOFFICE_DOMAIN` to the backoffice host name.
+6. Set `PUBLIC_APP_URL` to `https://` and the value of `DOMAIN`.
+7. Set `RECAPTCHA_SECRET_KEY`. Without it, the interest form refuses all submissions.
+8. Optional: set `BACKOFFICE_ALLOWED_IPS` to your IP addresses. Separate the values with spaces.
+9. In the `docker` directory, run `docker compose up --build -d`.
+
+- Dashboard: `https://<DOMAIN>`
+- Backoffice: `https://<BACKOFFICE_DOMAIN>`
+
+`BACKOFFICE_ALLOWED_IPS` applies two times. Caddy blocks the backoffice site. The server blocks `/api/backoffice` on all host names. Do not set an empty value: Caddy then blocks all addresses.
+
+### Run on your computer
+
+1. Keep `DOMAIN=localhost` and `BACKOFFICE_DOMAIN=admin.localhost`.
+2. Run `docker compose up --build -d` in the `docker` directory.
+3. Open `https://localhost` for the dashboard.
+4. Open `https://admin.localhost` for the backoffice.
+
+Caddy uses a local certificate for these names. The browser shows a warning for this certificate. Accept the warning to continue.
+
+### Deploy over SSH
 
 1. Install Docker on the server: `ssh user@host 'bash -s' < scripts/setup-server.sh`
 2. Run `./scripts/deploy.sh user@host` to deploy the bot.
+
+### Upgrade from a version without Caddy
+
+The old setup published the dashboard on port `80` and the backoffice on port `8080`. Now Caddy publishes ports `80` and `443`. The server container runs as the user `node`. Old data volumes belong to `root`.
+
+1. Add `DOMAIN` and `BACKOFFICE_DOMAIN` to `docker/.env.production`.
+2. Open ports `80` and `443` in the firewall. Close port `8080`.
+3. Run `docker compose build`.
+4. Give the data volumes to the `node` user: `docker compose run --rm --user root server chown -R node:node /app/data /app/logs`
+5. Run `docker compose up -d`.
+
+The WebSocket now receives the login token in the first message, not in the URL. Users must reload the dashboard after the upgrade.
 
 ## Tests
 

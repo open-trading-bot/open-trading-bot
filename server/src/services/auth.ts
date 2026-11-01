@@ -1,8 +1,9 @@
+import { randomBytes } from 'crypto';
 import logger from '../utils/logger.js';
 import { createRateLimiter } from '../utils/rate-limiter.js';
 import { RATE_LIMITS } from '../utils/constants.js';
 import { signUserToken } from '../utils/jwt.js';
-import { verifyPassword } from '../db/seed.js';
+import { hashPassword, verifyPassword } from '../db/seed.js';
 import { unblockUser } from '../utils/token-blocklist.js';
 import type { Db } from '../db/index.js';
 
@@ -21,6 +22,9 @@ export interface LoginResult {
   error?: 'invalid_credentials' | 'rate_limited' | 'account_disabled';
 }
 
+/** A hash of a random password. Login compares against it when no user matches. */
+const DUMMY_HASH = hashPassword(randomBytes(32).toString('hex'));
+
 export function createAuthService(db: Db, jwtSecret: string): AuthService {
   const limiter = createRateLimiter(RATE_LIMITS.LOGIN);
   const accountLimiter = createRateLimiter(RATE_LIMITS.LOGIN_ACCOUNT);
@@ -33,17 +37,23 @@ export function createAuthService(db: Db, jwtSecret: string): AuthService {
         return { ok: false, error: 'rate_limited', retryAfter };
       }
 
-      const lookup = typeof username === 'string' && username.includes('@')
-        ? username.trim().toLowerCase()
-        : username;
-      const accountKey = `account:${String(lookup).toLowerCase()}`;
+      // The body is JSON, so these values can be objects or arrays. Handle
+      // them as wrong credentials. They must not throw before the limiter
+      // records the attempt.
+      const validInput = typeof username === 'string' && typeof password === 'string';
+      const name = typeof username === 'string' ? username : '';
+      const lookup = name.includes('@') ? name.trim().toLowerCase() : name;
+      const accountKey = `account:${lookup.toLowerCase()}`;
       const account = accountLimiter.check(accountKey);
       if (!account.allowed) {
         logger.warn(`[auth] Login blocked for account ${lookup} — retry after ${account.retryAfter}s`);
         return { ok: false, error: 'rate_limited', retryAfter: account.retryAfter };
       }
-      const user = db.getUserByUsername(lookup);
-      if (user && user.enabled && verifyPassword(password, user.passwordHash)) {
+      const user = validInput ? db.getUserByUsername(lookup) : null;
+      // Always run one scrypt, also for an unknown or disabled user. Then the
+      // response time does not show if the username exists.
+      const passwordOk = verifyPassword(validInput ? password : '', user?.passwordHash ?? DUMMY_HASH);
+      if (user && user.enabled && passwordOk) {
         limiter.clear(ip);
         accountLimiter.clear(accountKey);
         // Only clears the "sessions revoked" badge in the backoffice. Old
@@ -58,7 +68,6 @@ export function createAuthService(db: Db, jwtSecret: string): AuthService {
       if (user && !user.enabled) {
         logger.warn(`[auth] Login rejected for disabled user ${username} from ${ip}`);
         limiter.record(ip);
-      accountLimiter.record(accountKey);
         accountLimiter.record(accountKey);
         const remaining = limiter.remaining(ip);
         return { ok: false, error: 'account_disabled', attemptsRemaining: remaining };

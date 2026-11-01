@@ -1,0 +1,30 @@
+# TLS termination for the Docker setup. Caddy gets and renews certificates
+# automatically. For "localhost" names it uses its own local CA.
+#
+# DOMAIN             dashboard host name. Default: localhost
+# BACKOFFICE_DOMAIN  backoffice host name. Default: admin.localhost
+# BACKOFFICE_ALLOWED_IPS  optional. IPs and CIDR ranges, separated by spaces.
+
+(hsts) {
+	# Not for localhost: HSTS on localhost also forces HTTPS on local dev servers.
+	@public not host localhost *.localhost
+	header @public {
+		Strict-Transport-Security "max-age=31536000"
+		defer
+	}
+	header -Server
+}
+
+{$DOMAIN:localhost} {
+	import hsts
+	encode zstd gzip
+	reverse_proxy client:80
+}
+
+{$BACKOFFICE_DOMAIN:admin.localhost} {
+	import hsts
+	encode zstd gzip
+	@blocked not remote_ip {$BACKOFFICE_ALLOWED_IPS:0.0.0.0/0 ::/0}
+	respond @blocked "Forbidden" 403
+	reverse_proxy backoffice:80
+}

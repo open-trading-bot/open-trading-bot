@@ -19,6 +19,16 @@ describe('loadEnv secret checks (S4)', () => {
     expect(() => loadEnv()).not.toThrow();
   });
 
+  it('takes the reCAPTCHA hostname from PUBLIC_APP_URL', () => {
+    process.env.PUBLIC_APP_URL = 'https://Bot.Example.com:8443/app/';
+    expect(loadEnv().recaptchaHostname).toBe('bot.example.com');
+  });
+
+  it('has no reCAPTCHA hostname when PUBLIC_APP_URL is not set', () => {
+    delete process.env.PUBLIC_APP_URL;
+    expect(loadEnv().recaptchaHostname).toBeUndefined();
+  });
+
   it.each([
     ['API_KEY', 'change-me-to-a-random-string'],
     ['JWT_SECRET', 'change-me-to-a-random-jwt-secret'],

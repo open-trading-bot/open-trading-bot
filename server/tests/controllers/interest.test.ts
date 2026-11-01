@@ -44,4 +44,13 @@ describe('InterestController', () => {
     await ctrl.submit(mockReq({ email: 'a@b.com', captchaToken: 'bad' }), res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
+
+  it('returns 503 when reCAPTCHA is not configured in production', async () => {
+    const svc = { submit: vi.fn().mockResolvedValue({ ok: false, error: 'captcha_unavailable' }) };
+    const ctrl = createInterestController(svc as any);
+    const res = mockRes();
+    await ctrl.submit(mockReq({ email: 'a@b.com' }), res);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Not available' });
+  });
 });

@@ -38,11 +38,15 @@ function scheduleReconnect() {
 function connect() {
   if (sharedWs && sharedWs.readyState <= WebSocket.OPEN) return;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const token = localStorage.getItem('token');
-  const ws = new WebSocket(`${protocol}//${window.location.host}/ws${token ? `?token=${token}` : ''}`);
+  // The token goes in the first message, not in the URL. Proxies log URLs.
+  const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
   ws.onopen = () => {
     attempt = 0;
+    // Without a token the server closes the socket with 4001 after its auth
+    // timeout. onclose then logs out.
+    const token = useAuthStore.getState().token;
+    if (token) ws.send(JSON.stringify({ type: 'auth', token }));
   };
 
   ws.onmessage = (msg) => {
