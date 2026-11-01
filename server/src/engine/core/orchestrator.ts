@@ -46,6 +46,11 @@ export function createOrchestrator(
   const closingPositions = new Set<string>();
   const stopLossLastAttempt = new Map<string, number>();
   let inFlightTick: Promise<void> | null = null;
+  // Per-tick counters for the single info summary line, and the signals of
+  // the tick. The signals go to the client in one message at the end of the
+  // tick, not one message per asset and strategy.
+  let tickStats = { assets: 0, orders: 0, errors: 0 };
+  let tickSignals: Signal[] = [];
 
   async function waitForIdle(): Promise<void> {
     if (!inFlightTick) return;
@@ -134,9 +139,9 @@ export function createOrchestrator(
     }
     const candlesByInterval = new Map<string, Awaited<ReturnType<typeof exchange.fetchCandles>>>();
     for (const interval of intervalsNeeded) {
-      logger.info(`[tick] Fetching candles for ${symbol} (${interval})`);
+      logger.debug(`[tick] Fetching candles for ${symbol} (${interval})`);
       const candles = await exchange.fetchCandles(symbol, interval);
-      logger.info(`[tick] Got ${candles.length} candles for ${symbol} (${interval})`);
+      logger.debug(`[tick] Got ${candles.length} candles for ${symbol} (${interval})`);
       db.insertCandles(symbol, interval, candles);
       candlesByInterval.set(interval, candles);
     }
@@ -144,12 +149,12 @@ export function createOrchestrator(
     const signals: Signal[] = [];
     for (const stratConfig of strategies) {
       const strategy = getStrategy(stratConfig.id);
-      if (!strategy) { logger.info(`[tick] Strategy ${stratConfig.id} not found, skipping`); continue; }
+      if (!strategy) { logger.debug(`[tick] Strategy ${stratConfig.id} not found, skipping`); continue; }
       const candles = candlesByInterval.get(stratConfig.interval)!;
       const signal = strategy.analyze(candles, stratConfig.params, symbol, marketType as any);
-      logger.info(`[tick] ${stratConfig.name} → ${symbol}: ${signal.action} (confidence: ${signal.confidence})`);
+      logger.debug(`[tick] ${stratConfig.name} → ${symbol}: ${signal.action} (confidence: ${signal.confidence})`);
       signals.push(signal);
-      broadcaster.broadcast({ type: WS_EVENTS.SIGNAL_GENERATED, data: signal });
+      tickSignals.push(signal);
     }
     return signals;
   }
@@ -165,7 +170,7 @@ export function createOrchestrator(
   // rose, or oversell (and open an untracked short on futures) when it fell.
   async function closeLongOnSignal(pos: Position, signal: Signal): Promise<void> {
     if (closingPositions.has(pos.id)) {
-      logger.info(`[tick] ${pos.symbol}: position ${pos.id} is already closing — skipping sell signal`);
+      logger.debug(`[tick] ${pos.symbol}: position ${pos.id} is already closing — skipping sell signal`);
       return;
     }
     closingPositions.add(pos.id);
@@ -211,6 +216,7 @@ export function createOrchestrator(
       closeReason,
     };
     db.insertTrade(trade);
+    tickStats.orders++;
     broadcaster.broadcast({ type: WS_EVENTS.TRADE_EXECUTED, data: trade });
     logger.info(`[trade] Executed: ${trade.side} ${trade.quantity} ${symbol} @ ${trade.price} pnl=$${pnl.toFixed(2)}`);
   }
@@ -256,11 +262,11 @@ export function createOrchestrator(
     if (status !== 'running') return;
     const bestSignal = pickBestSignal(signals);
     if (!bestSignal) {
-      logger.info(`[tick] ${asset.symbol}: all strategies say hold`);
+      logger.debug(`[tick] ${asset.symbol}: all strategies say hold`);
       return;
     }
 
-    logger.info(`[tick] ${asset.symbol}: best signal is ${bestSignal.action} from ${bestSignal.strategy} (confidence: ${bestSignal.confidence})`);
+    logger.debug(`[tick] ${asset.symbol}: best signal is ${bestSignal.action} from ${bestSignal.strategy} (confidence: ${bestSignal.confidence})`);
     const openPositions = db.getOpenPositions(userId);
 
     // A `sell` signal is only meaningful if there is an open long to close.
@@ -269,13 +275,13 @@ export function createOrchestrator(
     // short position the bot never tracks. The bot is long-only by design.
     const openLong = openPositions.find((p) => p.symbol === asset.symbol && p.side === 'buy');
     if (bestSignal.action === 'sell' && !openLong) {
-      logger.info(`[tick] ${asset.symbol}: sell signal with no matching long — skipping (bot is long-only)`);
+      logger.debug(`[tick] ${asset.symbol}: sell signal with no matching long — skipping (bot is long-only)`);
       return;
     }
     // One long per symbol. A signal can stay true for many ticks (for example
     // RSI below 30 for 20 minutes); without this check every tick buys again.
     if (bestSignal.action === 'buy' && openLong) {
-      logger.info(`[tick] ${asset.symbol}: buy signal but a long is already open — skipping`);
+      logger.debug(`[tick] ${asset.symbol}: buy signal but a long is already open — skipping`);
       return;
     }
 
@@ -285,7 +291,7 @@ export function createOrchestrator(
       confidence: bestSignal.confidence, availableBalance,
     });
     if (!riskResult.approved) {
-      logger.info(`[tick] ${asset.symbol}: risk manager rejected — ${riskResult.reason}`);
+      logger.debug(`[tick] ${asset.symbol}: risk manager rejected — ${riskResult.reason}`);
       return;
     }
 
@@ -296,12 +302,12 @@ export function createOrchestrator(
       return;
     }
 
-    logger.info(`[tick] ${asset.symbol}: placing buy order, amount: ${riskResult.amount}`);
+    logger.debug(`[tick] ${asset.symbol}: placing buy order, amount: ${riskResult.amount}`);
     const orderResult = await exchange.placeOrder({
       symbol: asset.symbol, side: 'buy',
       amount: riskResult.amount, type: config.orderType, marketType: asset.marketType,
     });
-    logger.info(`[tick] ${asset.symbol}: order ${orderResult.status} — price: ${orderResult.price}, qty: ${orderResult.quantity}`);
+    logger.debug(`[tick] ${asset.symbol}: order ${orderResult.status} — price: ${orderResult.price}, qty: ${orderResult.quantity}`);
 
     // Record a fill even if the bot stopped while the order was in flight:
     // the order exists on the exchange, so the position must be tracked.
@@ -313,18 +319,20 @@ export function createOrchestrator(
   async function executeTick(): Promise<void> {
     const enabledAssets = config.assets.filter((a) => a.enabled);
     const enabledStrategies = config.strategies.filter((s) => s.enabled);
-    logger.info(`[tick] Processing ${enabledAssets.length} assets with ${enabledStrategies.length} strategies`);
+    logger.debug(`[tick] Processing ${enabledAssets.length} assets with ${enabledStrategies.length} strategies`);
 
     await updatePositionPnl();
 
     let lastBalance: { free: number; totalEquity: number } | null = null;
     for (const asset of enabledAssets) {
       if (status !== 'running') break;
+      tickStats.assets++;
       try {
         const balance = await fetchBalanceForTick();
         if (balance !== null) lastBalance = balance;
         await processAsset(asset, enabledStrategies, balance?.free ?? 0);
       } catch (err) {
+        tickStats.errors++;
         logger.error(`[tick] ${asset.symbol}: error processing asset — ${err}`);
         broadcaster.broadcast({
           type: WS_EVENTS.ALERT,
@@ -360,7 +368,9 @@ export function createOrchestrator(
     },
     async tick() {
       if (status !== 'running') return;
-      logger.info(`[tick] Running tick at ${new Date().toISOString()}`);
+      const startedAt = Date.now();
+      tickStats = { assets: 0, orders: 0, errors: 0 };
+      tickSignals = [];
       const run = executeTick();
       inFlightTick = run;
       try {
@@ -369,8 +379,14 @@ export function createOrchestrator(
         if (inFlightTick === run) inFlightTick = null;
       }
       lastTickAt = Date.now();
+      if (tickSignals.length > 0) {
+        broadcaster.broadcast({ type: WS_EVENTS.SIGNALS_BATCH, data: tickSignals });
+      }
       broadcaster.broadcast({ type: WS_EVENTS.TICK_COMPLETE, data: { lastTickAt } } as any);
-      logger.info('[tick] Tick complete');
+      logger.info(
+        `[tick] user=${userId} assets=${tickStats.assets} signals=${tickSignals.length} `
+        + `orders=${tickStats.orders} errors=${tickStats.errors} duration=${lastTickAt - startedAt}ms`,
+      );
     },
     async killSwitch(reason: 'user' | 'admin') {
       this.stop();

@@ -79,6 +79,8 @@ export const ERROR_MSG = {
 export const WS_EVENTS = {
   BOT_STATUS: 'bot:status',
   SIGNAL_GENERATED: 'signal:generated',
+  // All signals of one tick in one message. Replaces SIGNAL_GENERATED.
+  SIGNALS_BATCH: 'signals:batch',
   TRADE_EXECUTED: 'trade:executed',
   POSITION_UPDATE: 'position:update',
   TICK_COMPLETE: 'tick:complete',
