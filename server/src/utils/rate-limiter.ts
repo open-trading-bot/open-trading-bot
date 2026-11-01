@@ -19,8 +19,12 @@ export interface RateLimiter {
   remaining(ip: string): number;
 }
 
+/**
+ * Returns the client IP. Express resolves req.ip from X-Forwarded-For only
+ * for the proxy hops that 'trust proxy' allows, so a client cannot spoof it.
+ */
 export function getClientIp(req: Request): string {
-  return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+  return req.ip || 'unknown';
 }
 
 export function createRateLimiter(config: RateLimiterConfig): RateLimiter {

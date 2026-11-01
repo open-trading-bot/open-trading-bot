@@ -8,6 +8,7 @@ import { verifyMessage } from 'ethers';
 import { createBybitAdapter } from '../exchange/bybit.js';
 import { createBinanceAdapter } from '../exchange/binance.js';
 import { createRateLimiter, getClientIp } from '../utils/rate-limiter.js';
+import { parseConfigUpdate } from '../utils/config-schema.js';
 import { csvHeader, csvRow, csvAttachmentFilename } from '../utils/csv.js';
 import { buildTextTable, textAttachmentFilename } from '../utils/text.js';
 
@@ -229,7 +230,9 @@ export function createDataController(dataService: DataService, db: Db, jwtSecret
     async updateConfig(req: Request, res: Response) {
       const userId = (req as any).user.id;
       const role = (req as any).user.role;
-      const update = { ...req.body };
+      const parsed = parseConfigUpdate(req.body);
+      if (!parsed.ok) { res.status(HTTP_STATUS.BAD_REQUEST).json({ error: parsed.error }); return; }
+      const update = parsed.value;
 
       const demoError = applyDemoModeRules(role, req.body.mode, update);
       if (demoError) { res.status(demoError.status).json({ error: demoError.error }); return; }

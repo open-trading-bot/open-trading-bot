@@ -600,7 +600,7 @@ export function Settings() {
             <div className="relative">
               <input
                 type="number"
-                min="5"
+                min="10"
                 value={config.tickInterval}
                 onChange={(e) => setConfig({ ...config, tickInterval: Number(e.target.value) })}
                 className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm w-full border border-gray-700 focus:border-blue-500 focus:outline-none transition-colors"

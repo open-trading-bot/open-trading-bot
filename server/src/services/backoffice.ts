@@ -42,6 +42,13 @@ export interface BackofficeService {
 }
 
 export function createBackofficeService(db: Db, botManager: BotManager): BackofficeService {
+  // Invalidates every token issued to the user, also after a restart.
+  // The blocklist entry only drives the "revoked" badge in the backoffice.
+  function revokeSessions(id: number): void {
+    db.bumpTokenVersion(id);
+    blockUser(id);
+  }
+
   return {
     getLeads() {
       return db.getLeads();
@@ -79,14 +86,14 @@ export function createBackofficeService(db: Db, botManager: BotManager): Backoff
       }
       db.updateUser(id, updates);
       if (updates.enabled === false) {
-        blockUser(id);
+        revokeSessions(id);
         botManager.stopBot(id);
         if (adminId) db.insertActionLog(id, BOT_ACTIONS.STOP, adminId, ACTION_SOURCES.BACKOFFICE);
       } else if (updates.enabled === true) {
         unblockUser(id);
       }
       if (updates.role !== undefined) {
-        blockUser(id);
+        revokeSessions(id);
       }
       if (updates.paperBalance !== undefined) {
         try {
@@ -135,12 +142,12 @@ export function createBackofficeService(db: Db, botManager: BotManager): Backoff
 
     updateUserPassword(id: number, password: string) {
       db.updateUserPassword(id, hashPassword(password));
-      blockUser(id);
+      revokeSessions(id);
     },
 
     deleteUser(id: number, adminId?: number) {
       db.deleteUser(id);
-      blockUser(id);
+      revokeSessions(id);
       botManager.stopBot(id);
       if (adminId) db.insertActionLog(id, BOT_ACTIONS.STOP, adminId, ACTION_SOURCES.BACKOFFICE);
     },
