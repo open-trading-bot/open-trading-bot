@@ -22,6 +22,10 @@ export function createInterestController(interestService: InterestService) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({ error: ERROR_MSG.VALID_EMAIL_REQUIRED });
         return;
       }
+      if (result.error === 'captcha_unavailable') {
+        res.status(HTTP_STATUS.SERVICE_UNAVAILABLE).json({ error: ERROR_MSG.NOT_AVAILABLE });
+        return;
+      }
       if (result.error === 'captcha_failed') {
         res.status(HTTP_STATUS.BAD_REQUEST).json({ error: ERROR_MSG.CAPTCHA_FAILED });
         return;
