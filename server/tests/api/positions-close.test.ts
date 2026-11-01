@@ -19,6 +19,7 @@ import { BOT_ACTIONS, ACTION_SOURCES } from '../../src/utils/constants.js';
 import type { Db } from '../../src/db/index.js';
 import type { WsBroadcaster } from '../../src/websocket/index.js';
 import type { Position } from '../../src/types/index.js';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 
 const TEST_POSITION_ID = 'test-pos-1';
 const USER_ID = 1;
@@ -103,7 +104,7 @@ describe('POST /api/positions/:id/close — end-to-end integration', () => {
     db = makeIntegrationDb();
 
     const broadcaster = mockBroadcaster();
-    const botManager = createBotManager(db, broadcaster, 'test-secret');
+    const botManager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     // Stub the paper exchange adapter's closePosition so the orchestrator
     // can complete the close without hitting any real exchange.  We access
@@ -120,7 +121,7 @@ describe('POST /api/positions/:id/close — end-to-end integration', () => {
 
     // Build the minimal Express app matching the data.test.ts pattern.
     const dataService = createDataService(db, botManager);
-    const controller = createDataController(dataService, db, 'test-secret', botService);
+    const controller = createDataController(dataService, db, TEST_CIPHER, botService);
     const app = express();
     app.use(express.json());
     // Inject authenticated user (no real JWT middleware needed in unit tests).

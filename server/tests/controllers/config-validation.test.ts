@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createDataController } from '../../src/controllers/data.js';
 import type { Db } from '../../src/db/index.js';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 
 function mockRes() {
   const res: any = { statusCode: 200 };
@@ -20,7 +21,7 @@ describe('PUT /api/config validation (S3)', () => {
   ])('returns 400 and does not change the bot for %j', async (body) => {
     const service = { updateConfig: vi.fn() };
     const res = mockRes();
-    await createDataController(service as any, db(), 'secret').updateConfig(req(body, 'demo'), res);
+    await createDataController(service as any, db(), TEST_CIPHER).updateConfig(req(body, 'demo'), res);
     expect(res.statusCode).toBe(400);
     expect(service.updateConfig).not.toHaveBeenCalled();
   });
@@ -28,7 +29,7 @@ describe('PUT /api/config validation (S3)', () => {
   it('passes only validated fields to the service', async () => {
     const service = { updateConfig: vi.fn().mockResolvedValue({ ok: true, config: {} }) };
     const res = mockRes();
-    await createDataController(service as any, db(), 'secret').updateConfig(req({ tickInterval: 30, evil: 1 }), res);
+    await createDataController(service as any, db(), TEST_CIPHER).updateConfig(req({ tickInterval: 30, evil: 1 }), res);
     expect(service.updateConfig).toHaveBeenCalledWith(1, { tickInterval: 30 });
   });
 });

@@ -7,6 +7,7 @@ import { createDataRouter } from '../../src/routes/data.js';
 import type { Db } from '../../src/db/index.js';
 import type { BotManager } from '../../src/engine/bot-manager.js';
 import type { BotService } from '../../src/services/bot.js';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 
 function mockDb(): Db {
   return {
@@ -72,7 +73,7 @@ describe('Data Routes', () => {
     const db = mockDb();
     (globalThis as any).__tradeSpy = db.getTradesPaginated;
     const service = createDataService(db, mockBotManager());
-    const controller = createDataController(service, db, 'test-secret', mockBotService());
+    const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 1, username: 'admin', role: 'admin' }; next(); });
@@ -114,7 +115,7 @@ describe('Data Routes', () => {
     const db = mockDb();
     const exportSpy = db.exportTrades as ReturnType<typeof vi.fn>;
     const service = createDataService(db, mockBotManager());
-    const controller = createDataController(service, db, 'test-secret', mockBotService());
+    const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 7, username: 'u', role: 'admin' }; next(); });
@@ -133,7 +134,7 @@ describe('Data Routes', () => {
     const db = mockDb();
     const exportSpy = db.exportTrades as ReturnType<typeof vi.fn>;
     const service = createDataService(db, mockBotManager());
-    const controller = createDataController(service, db, 'test-secret', mockBotService());
+    const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 7, username: 'u', role: 'admin' }; next(); });
@@ -180,7 +181,7 @@ describe('Data Routes', () => {
     const db = mockDb();
     const iterSpy = db.iterateTrades as ReturnType<typeof vi.fn>;
     const service = createDataService(db, mockBotManager());
-    const controller = createDataController(service, db, 'test-secret', mockBotService());
+    const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 9, username: 'u', role: 'admin' }; next(); });
@@ -238,7 +239,7 @@ describe('Data Routes', () => {
     (manager.getExchange as any).mockReturnValue(mockExchange);
     const service = createDataService(dbMock, manager);
     const spyBalance = vi.spyOn(service, 'getPortfolioBalance');
-    const controller = createDataController(service, dbMock, 'test-secret');
+    const controller = createDataController(service, dbMock, TEST_CIPHER);
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 88, username: 'testuser', role: 'admin' }; next(); });
@@ -325,7 +326,7 @@ describe('Data Routes — live mode requires exchange keys invariant', () => {
   beforeEach(async () => {
     db = mockDb();
     const service = createDataService(db, mockBotManager());
-    const controller = createDataController(service, db, 'test-secret', mockBotService());
+    const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 1, username: 'admin', role: 'admin' }; next(); });
@@ -382,7 +383,7 @@ describe('Data Routes — live mode skips paper balance validation', () => {
     const manager = mockBotManager();
     (manager.getConfig as any).mockReturnValue({ mode: 'live', tradeAmount: 100 });
     const service = createDataService(db, manager);
-    const controller = createDataController(service, db, 'test-secret', mockBotService());
+    const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 1, username: 'admin', role: 'admin' }; next(); });
@@ -412,7 +413,7 @@ describe('Data Routes — POST /api/positions/:id/close', () => {
   async function buildApp(svc: BotService) {
     const db = mockDb();
     const service = createDataService(db, mockBotManager());
-    const controller = createDataController(service, db, 'test-secret', svc);
+    const controller = createDataController(service, db, TEST_CIPHER, svc);
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { id: 1, username: 'admin', role: 'admin' }; next(); });
