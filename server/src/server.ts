@@ -5,6 +5,7 @@ import cors from 'cors';
 import http from 'http';
 import type { Router } from 'express';
 import { authMiddleware } from './middleware/auth.js';
+import { ipAllowListMiddleware } from './middleware/ip-allowlist.js';
 import { API_PATHS, HTTP_STATUS, ERROR_MSG } from './utils/constants.js';
 import { PublicError } from './utils/errors.js';
 import logger from './utils/logger.js';
@@ -32,6 +33,9 @@ export function createApp(apiKey: string, jwtSecret: string, getUser: (id: numbe
     logger.info(`[api] ${req.method} ${req.path}`);
     next();
   });
+  // Runs before auth, so a blocked address gets 403 also with a valid token.
+  // Express matches this path without case sensitivity.
+  app.use(API_PATHS.BACKOFFICE, ipAllowListMiddleware(process.env.BACKOFFICE_ALLOWED_IPS));
   app.use(authMiddleware(apiKey, jwtSecret, getUser));
 
   return { app, server };
