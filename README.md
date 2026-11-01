@@ -96,6 +96,7 @@ cd server && npm test
 
 Contributions are welcome.
 
+- To ask a question, use [Q&A in Discussions](https://github.com/open-trading-bot/open-trading-bot/discussions/categories/q-a).
 - Before you start a large change, open an issue to discuss it.
 - Keep pull requests small.
 
