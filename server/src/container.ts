@@ -40,6 +40,7 @@ interface ContainerConfig {
   adminUser: string;
   adminPass: string;
   recaptchaSecret?: string;
+  recaptchaHostname?: string;
   resendApiKey?: string;
   emailFrom?: string;
   publicAppUrl: string;
@@ -48,7 +49,7 @@ interface ContainerConfig {
 export function createContainer(config: ContainerConfig) {
   // Services — own their dependencies
   const authService = createAuthService(config.db, config.jwtSecret);
-  const interestService = createInterestService(config.db, config.recaptchaSecret);
+  const interestService = createInterestService(config.db, config.recaptchaSecret, { expectedHostname: config.recaptchaHostname });
   const botService = createBotService(config.botManager, config.db);
   const dataService = createDataService(config.db, config.botManager);
   const backtestService = createBacktestService(config.db, config.botManager);

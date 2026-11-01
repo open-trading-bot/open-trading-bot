@@ -32,6 +32,7 @@ const routers = createContainer({
   db, botManager,
   jwtSecret: env.jwtSecret, exchangeKeyCipher, adminUser: env.adminUser, adminPass: env.adminPass,
   recaptchaSecret: env.recaptchaSecret,
+  recaptchaHostname: env.recaptchaHostname,
   resendApiKey: env.resendApiKey,
   emailFrom: env.emailFrom,
   publicAppUrl: env.publicAppUrl,

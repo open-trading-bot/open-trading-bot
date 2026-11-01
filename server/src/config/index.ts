@@ -13,6 +13,8 @@ export interface EnvConfig {
   adminPass: string;
   botMode: BotMode;
   recaptchaSecret?: string;
+  /** Hostname of PUBLIC_APP_URL. The reCAPTCHA response must show this hostname. */
+  recaptchaHostname?: string;
   bybitApiKey: string;
   bybitApiSecret: string;
   bybitTestnet: boolean;
@@ -40,6 +42,15 @@ function assertEncryptionKey(name: string, value: string): void {
   }
   if (!isValidMasterKey(value)) {
     throw new Error(`${name} must be 64 hex characters (32 random bytes). Run "openssl rand -hex 32" and set the output.`);
+  }
+}
+
+function hostnameOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    throw new Error('PUBLIC_APP_URL must be a full URL, for example https://bot.example.com');
   }
 }
 
@@ -78,6 +89,7 @@ export function loadEnv(): EnvConfig {
     adminPass,
     botMode: (process.env.BOT_MODE || DEFAULTS.BOT_MODE) as BotMode,
     recaptchaSecret: process.env.RECAPTCHA_SECRET_KEY,
+    recaptchaHostname: hostnameOf(process.env.PUBLIC_APP_URL),
     bybitApiKey: process.env.BYBIT_API_KEY || '',
     bybitApiSecret: process.env.BYBIT_API_SECRET || '',
     bybitTestnet: process.env.BYBIT_TESTNET === 'true',
