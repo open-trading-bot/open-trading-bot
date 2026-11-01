@@ -94,9 +94,9 @@ describe('createRateLimiter', () => {
 });
 
 describe('getClientIp', () => {
-  it('returns x-forwarded-for first entry', () => {
+  it('does not read x-forwarded-for directly (Express resolves req.ip)', () => {
     const req = { headers: { 'x-forwarded-for': '10.0.0.1, 10.0.0.2' }, ip: '127.0.0.1' } as any;
-    expect(getClientIp(req)).toBe('10.0.0.1');
+    expect(getClientIp(req)).toBe('127.0.0.1');
   });
 
   it('falls back to req.ip', () => {

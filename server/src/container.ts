@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import type { Db } from './db/index.js';
 import type { BotManager } from './engine/bot-manager.js';
 
@@ -22,7 +21,7 @@ import { createDataController } from './controllers/data.js';
 import { createBacktestController } from './controllers/backtest.js';
 import { createBackofficeController } from './controllers/backoffice.js';
 
-import { DEFAULTS } from './utils/constants.js';
+import { signUserToken } from './utils/jwt.js';
 
 // Routes
 import { createAuthRouter } from './routes/auth.js';
@@ -61,7 +60,7 @@ export function createContainer(config: ContainerConfig) {
     config.db,
     emailService,
     config.publicAppUrl,
-    (user) => jwt.sign({ id: user.id, username: user.username, role: user.role }, config.jwtSecret, { expiresIn: DEFAULTS.JWT_EXPIRY }),
+    (user) => signUserToken(user, config.jwtSecret),
   );
   const disclaimerService = createDisclaimerService(config.db);
 

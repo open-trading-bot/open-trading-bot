@@ -113,6 +113,7 @@ export function runMigrations(db: Database.Database): void {
   addColumn('users', 'exchange_name', "TEXT DEFAULT 'bybit'");
   addColumn('users', 'disclaimer_accepted_at', 'INTEGER');
   addColumn('users', 'disclaimer_version', 'TEXT');
+  addColumn('users', 'token_version', 'INTEGER DEFAULT 0');
   addColumn('users', 'disclaimer_lang', 'TEXT');
   addColumn('users', 'disclaimer_signature', 'TEXT');
   addColumn('users', 'disclaimer_ip', 'TEXT');

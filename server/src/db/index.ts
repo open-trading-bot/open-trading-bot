@@ -12,6 +12,8 @@ export interface DbUser {
   enabled: boolean;
   createdAt: number;
   lastLogin: number | null;
+  /** Increments when sessions are revoked. Tokens carry the value they were signed with. */
+  tokenVersion?: number;
   exchangeKey: string | null;
   exchangeSecret: string | null;
   exchangeTestnet: boolean;
@@ -120,6 +122,8 @@ export interface Db {
   updateUser(id: number, updates: Partial<{ email: string | null; role: string; enabled: boolean; paperBalance: number; exchangeName: string }>): void;
   updateLastLogin(id: number): void;
   updateUserPassword(id: number, passwordHash: string): void;
+  /** Revokes every token issued to the user before now. */
+  bumpTokenVersion(id: number): void;
   updateUserPreferences(id: number, lang: string, theme: string): void;
   acceptDisclaimerForUser(userId: number, record: {
     version: string;
@@ -331,6 +335,7 @@ export function createDb(filepath: string): Db {
       enabled: (row.enabled as number) === 1,
       createdAt: row.created_at as number,
       lastLogin: row.last_login as number | null,
+      tokenVersion: (row.token_version as number | null) ?? 0,
       exchangeKey: (row.exchange_key as string) ?? null,
       exchangeSecret: (row.exchange_secret as string) ?? null,
       exchangeTestnet: row.exchange_testnet == null ? true : (row.exchange_testnet as number) === 1,
@@ -515,6 +520,9 @@ export function createDb(filepath: string): Db {
     },
     getUsers() {
       return (stmts.getUsers.all() as Record<string, unknown>[]).map(mapUser);
+    },
+    bumpTokenVersion(id: number) {
+      db.prepare('UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(id);
     },
     getUserById(id: number) {
       const row = stmts.getUserById.get(id) as Record<string, unknown> | undefined;

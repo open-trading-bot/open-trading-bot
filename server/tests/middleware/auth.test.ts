@@ -13,7 +13,10 @@ describe('Auth Middleware', () => {
 
   beforeEach(async () => {
     const app = express();
-    app.use(authMiddleware(API_KEY, JWT_SECRET));
+    const users: Record<number, any> = {
+      42: { id: 42, username: 'testuser', role: 'regular', enabled: true, tokenVersion: 0 },
+    };
+    app.use(authMiddleware(API_KEY, JWT_SECRET, (id) => users[id] ?? null));
     app.get('/api/test', (req, res) => res.json({ ok: true, user: (req as any).user }));
     app.get('/api/health', (_req, res) => res.json({ ok: true }));
     app.get('/api/auth/invitation/:token', (_req, res) => res.json({ ok: true }));
