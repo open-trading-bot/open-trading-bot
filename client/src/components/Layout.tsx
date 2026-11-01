@@ -1,6 +1,7 @@
 // client/src/components/Layout.tsx
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
+import { PageFallback } from './PageFallback';
 import { TopBar } from './TopBar';
 import { BottomNav } from './BottomNav';
 import { NavLink } from 'react-router-dom';
@@ -130,7 +131,7 @@ export function Layout() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 py-5 pb-20 md:pb-5">
-        <Outlet />
+        <Suspense fallback={<PageFallback />}><Outlet /></Suspense>
       </main>
 
       <BottomNav />
