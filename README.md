@@ -42,6 +42,47 @@ npm run dev
 - Dashboard: http://localhost:5173
 - Backoffice: http://localhost:5174
 
+## Start with an AI coding assistant
+
+An AI coding assistant can install, configure and start the app for you, for example Claude Code. The prompt below starts the app in paper mode only.
+
+1. Open the assistant in the folder of this repository.
+2. Copy the text in the block below.
+3. Paste the text into the assistant.
+
+```text
+Start the open-trading-bot app on this computer in paper mode. Do these steps in sequence.
+
+1. Make sure that this computer has Node.js 22 or later and npm. If one of them is missing, stop and tell me.
+2. In the repository root, run: npm install --legacy-peer-deps
+3. Make sure that this file exists: node_modules/better-sqlite3/build/Release/better_sqlite3.node
+   If the file does not exist, go to node_modules/better-sqlite3 and run: npx prebuild-install
+4. If the file server/.env exists, do not change it. Go to step 7.
+5. Copy server/.env.example to server/.env.
+6. In server/.env, set these values:
+   - API_KEY: the output of: openssl rand -hex 32
+   - JWT_SECRET: a new output of: openssl rand -hex 32
+   - ADMIN_PASS: a random password with a minimum of 12 characters. Use an uppercase letter, a digit and a symbol.
+   - BOT_MODE=paper
+   - BYBIT_TESTNET=true
+   - Keep BYBIT_API_KEY and BYBIT_API_SECRET empty.
+7. In the repository root, run: npm run dev
+   Keep this process running.
+8. Send a request to http://localhost:3001/api/health every 2 seconds. Stop when the status is 200, or after 60 seconds.
+9. Make sure that http://localhost:5173 and http://localhost:5174 return a page.
+10. Give me this information:
+    - The URL of the dashboard, the backoffice and the server.
+    - The admin username. It is the ADMIN_USER value in server/.env. The default is admin.
+    - The location of the admin password: server/.env.
+    Do not write a secret in the chat.
+
+Rules:
+- Do not set BOT_MODE=live.
+- Do not add exchange API keys.
+- Do not commit server/.env or a different file that contains a secret.
+- Do not change the source code to make the app start. If a step fails, stop and show me the error.
+```
+
 ## Configuration
 
 The server does not start without `API_KEY`, `JWT_SECRET` and `ADMIN_PASS`.
