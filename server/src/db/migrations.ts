@@ -71,7 +71,6 @@ export function runMigrations(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol);
     CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp);
-    CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles(symbol, interval, timestamp);
   `);
 
   db.exec(`
@@ -127,6 +126,16 @@ export function runMigrations(db: Database.Database): void {
 
   // Create index on close_reason column
   db.exec('CREATE INDEX IF NOT EXISTS idx_trades_close_reason ON trades(close_reason)');
+
+  // Per-user queries (trade pages, counts, daily PnL, open positions) filter on
+  // user_id. Without these indexes each query scans the whole table.
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_trades_user_ts ON trades(user_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_positions_user ON positions(user_id);
+  `);
+  // The candles primary key (symbol, interval, timestamp) already serves these
+  // lookups. A second identical index only doubles the cost of each write.
+  db.exec('DROP INDEX IF EXISTS idx_candles_lookup');
 
   // Normalize legacy paper-mode rows. The exchange column was added with
   // DEFAULT 'bybit', which backfilled every pre-existing row — including
