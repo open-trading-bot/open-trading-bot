@@ -7,6 +7,7 @@ import { createTickLoop } from './tick-loop.js';
 import { createBybitAdapter } from '../exchange/bybit.js';
 import { createBinanceAdapter } from '../exchange/binance.js';
 import { createPaperAdapter } from '../exchange/paper.js';
+import { withSharedMarketData } from '../exchange/market-data-cache.js';
 import { createBotConfig, reconcileStrategies } from '../config/index.js';
 import { decrypt } from '../utils/crypto.js';
 import { DEFAULTS, DEFAULT_EXCHANGE } from '../utils/constants.js';
@@ -39,10 +40,9 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, jwtSecret: 
   const bots = new Map<number, UserBot>();
 
   function createAdapter(name: string, config: { apiKey: string; secret: string; testnet: boolean }): ExchangeAdapter {
-    switch (name) {
-      case 'binance': return createBinanceAdapter(config);
-      default: return createBybitAdapter(config);
-    }
+    const adapter = name === 'binance' ? createBinanceAdapter(config) : createBybitAdapter(config);
+    // One cache and one rate-limit breaker per exchange network, shared by all users.
+    return withSharedMarketData(adapter, `${adapter.name}|${config.testnet ? 'testnet' : 'mainnet'}`);
   }
 
   function createExchangeForUser(userId: number, mode: BotMode): ExchangeAdapter {
