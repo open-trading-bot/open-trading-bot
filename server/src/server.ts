@@ -54,6 +54,8 @@ export function createApp(apiKey: string, jwtSecret: string, getUser: (id: numbe
     contentSecurityPolicy: { useDefaults: false, directives: CSP_DIRECTIVES },
     frameguard: { action: 'deny' },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    // The TLS proxy (Caddy in docker/) sets HSTS for the public host names.
+    strictTransportSecurity: false,
   }));
   app.use(cors());
   app.use(express.json());

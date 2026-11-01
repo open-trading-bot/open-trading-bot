@@ -29,6 +29,12 @@ describe('security headers', () => {
     expect(headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
   });
 
+  it('leaves HSTS to the TLS proxy', () => {
+    // The server does not know the public host name. HSTS from here would
+    // also pin "localhost" in local Docker runs.
+    expect(headers.get('strict-transport-security')).toBeNull();
+  });
+
   it('removes X-Powered-By', () => {
     expect(headers.get('x-powered-by')).toBeNull();
   });
