@@ -47,13 +47,21 @@ RUN cd backoffice && npm run build
 
 # --- Production server ---
 FROM node:20-alpine AS server
+ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=server-build /app/server/dist ./dist
-COPY --from=server-build /app/server/package*.json ./
-RUN npm ci --omit=dev
-RUN mkdir -p data
+# Install from the root workspace lockfile, so the image gets the audited versions.
+COPY package.json package-lock.json ./
+COPY server/package.json ./server/
+COPY client/package.json ./client/
+COPY backoffice/package.json ./backoffice/
+COPY common/package.json ./common/
+RUN npm ci --omit=dev --workspace=server && npm cache clean --force
+COPY --from=server-build /app/server/dist ./server/dist
+# The server runs as the unprivileged "node" user. It writes only to data/ and logs/.
+RUN mkdir -p data logs && chown node:node data logs
+USER node
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["node", "server/dist/index.js"]
 
 # --- Production client (nginx) ---
 FROM nginx:alpine AS client
