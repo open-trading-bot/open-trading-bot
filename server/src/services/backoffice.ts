@@ -59,13 +59,12 @@ export function createBackofficeService(db: Db, botManager: BotManager): Backoff
     },
 
     async getStats() {
-      const trades = db.getAllTrades(10000);
+      const totals = db.getTradeTotals();
       const positions = db.getAllOpenPositions();
-      const totalPnl = trades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
       return {
-        totalTrades: trades.length,
+        totalTrades: totals.count,
         openPositions: positions.length,
-        totalPnl,
+        totalPnl: totals.totalPnl,
       };
     },
 

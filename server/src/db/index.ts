@@ -145,6 +145,8 @@ export interface Db {
   getUsersDailyPnl(): { userId: number; dailyPnl: number }[];
   // Admin: get all trades/positions across users
   getAllTrades(limit?: number): Trade[];
+  /** Count and pnl sum over all trades, computed in SQL. A null pnl counts as 0. */
+  getTradeTotals(): { count: number; totalPnl: number };
   getAllTradesPaginated(page: number, limit: number, filters?: TradeFilters & { userId?: number }): { data: Trade[]; total: number };
   getAllTradeDistinctSymbols(): string[];
   getAllTradeDistinctStrategies(): string[];
@@ -252,6 +254,7 @@ export function createDb(filepath: string): Db {
     getAllTrades: db.prepare('SELECT * FROM trades ORDER BY timestamp DESC LIMIT ?'),
     getAllTradesPaginated: db.prepare('SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?'),
     getAllTradesCount: db.prepare('SELECT COUNT(*) as count FROM trades'),
+    getTradeTotals: db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(pnl), 0) as totalPnl FROM trades'),
     getAllTradeDistinctSymbols: db.prepare('SELECT DISTINCT symbol FROM trades ORDER BY symbol'),
     getAllTradeDistinctStrategies: db.prepare('SELECT DISTINCT strategy FROM trades ORDER BY strategy'),
     getAllOpenPositions: db.prepare('SELECT * FROM positions'),
@@ -608,6 +611,7 @@ export function createDb(filepath: string): Db {
         GROUP BY user_id
       `).all(start.getTime(), end.getTime()) as { userId: number; dailyPnl: number }[];
     },
+    getTradeTotals() { return stmts.getTradeTotals.get() as { count: number; totalPnl: number }; },
     getAllTrades(limit = 100) { return (stmts.getAllTrades.all(limit) as Record<string, unknown>[]).map(mapTrade); },
     getAllTradesPaginated(page: number, limit: number, filters?: TradeFilters & { userId?: number }) {
       let where = 'WHERE 1=1';
