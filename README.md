@@ -208,9 +208,16 @@ The WebSocket now receives the login token in the first message, not in the URL.
 
 ## Tests
 
+Run all tests from the repository root:
+
 ```bash
-cd server && npm test
+npm test
 ```
+
+This command runs two test suites:
+
+- `server`: the API, the trading engine and the database.
+- `common`: the shared client code, for example the WebSocket connection.
 
 ## Contributing
 

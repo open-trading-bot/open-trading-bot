@@ -2,7 +2,12 @@
   "name": "open-trading-bot",
   "private": true,
   "license": "MIT",
-  "workspaces": ["common", "client", "backoffice", "server"],
+  "workspaces": [
+    "common",
+    "client",
+    "backoffice",
+    "server"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"sleep 2 && npm run dev:client\" \"sleep 2 && npm run dev:backoffice\"",
     "dev:server": "cd server && npm run dev",
@@ -10,7 +15,8 @@
     "dev:backoffice": "cd backoffice && npm run dev",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:backoffice\"",
     "build": "cd server && npm run build && cd ../client && npm run build",
-    "start": "cd server && npm start"
+    "start": "cd server && npm start",
+    "test": "npm run test --workspace server && npm run test --workspace common"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

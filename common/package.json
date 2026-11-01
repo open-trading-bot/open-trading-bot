@@ -7,9 +7,16 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "peerDependencies": {
+    "axios": "^1.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "axios": "^1.0.0",
     "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "vitest": "^4.1.12"
+  },
+  "scripts": {
+    "test": "vitest run"
   }
 }
