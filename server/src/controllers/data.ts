@@ -3,7 +3,7 @@ import { HTTP_STATUS, ERROR_MSG, DEFAULTS, ROLES, WALLET_SIGN_MESSAGE, RATE_LIMI
 import type { DataService } from '../services/data.js';
 import type { BotService } from '../services/bot.js';
 import type { Db } from '../db/index.js';
-import { encrypt, decrypt } from '../utils/crypto.js';
+import type { ExchangeKeyCipher } from '../utils/crypto.js';
 import { verifyMessage } from 'ethers';
 import { createBybitAdapter } from '../exchange/bybit.js';
 import { createBinanceAdapter } from '../exchange/binance.js';
@@ -107,7 +107,7 @@ function isValidationError(result: { balance: number } | ValidationError): resul
   return 'status' in result;
 }
 
-export function createDataController(dataService: DataService, db: Db, jwtSecret: string, botService: BotService) {
+export function createDataController(dataService: DataService, db: Db, keyCipher: ExchangeKeyCipher, botService: BotService) {
   return {
     getDailyPnlReport(req: Request, res: Response) {
       const userId = (req as any).user.id;
@@ -268,13 +268,13 @@ export function createDataController(dataService: DataService, db: Db, jwtSecret
       let secretHint = '';
       if (user?.exchangeKey) {
         try {
-          const decrypted = decrypt(user.exchangeKey, jwtSecret);
+          const decrypted = keyCipher.decrypt(user.exchangeKey);
           keyHint = decrypted.slice(-3);
         } catch { /* ignore */ }
       }
       if (user?.exchangeSecret) {
         try {
-          const decrypted = decrypt(user.exchangeSecret, jwtSecret);
+          const decrypted = keyCipher.decrypt(user.exchangeSecret);
           secretHint = decrypted.slice(-3);
         } catch { /* ignore */ }
       }
@@ -303,8 +303,8 @@ export function createDataController(dataService: DataService, db: Db, jwtSecret
       const verifyResult = await verifyExchangeCredentials(exchangeName, apiKey, apiSecret, testnet ?? true);
       if (isValidationError(verifyResult)) { res.status(verifyResult.status).json({ error: verifyResult.error }); return; }
 
-      const encKey = encrypt(apiKey, jwtSecret);
-      const encSecret = encrypt(apiSecret, jwtSecret);
+      const encKey = keyCipher.encrypt(apiKey);
+      const encSecret = keyCipher.encrypt(apiSecret);
       db.updateUserExchangeKeys(userId, encKey, encSecret, testnet ?? true);
       db.updateUser(userId, { exchangeName });
       res.json({ hasKeys: true, testnet: testnet ?? true, keyHint: apiKey.slice(-3), secretHint: apiSecret.slice(-3), exchange: exchangeName });
@@ -333,8 +333,8 @@ export function createDataController(dataService: DataService, db: Db, jwtSecret
       }
       checkKeyLimiter.record(ip);
       try {
-        const apiKey = decrypt(user.exchangeKey, jwtSecret);
-        const apiSecret = decrypt(user.exchangeSecret, jwtSecret);
+        const apiKey = keyCipher.decrypt(user.exchangeKey);
+        const apiSecret = keyCipher.decrypt(user.exchangeSecret);
         const exchangeName = user.exchangeName || DEFAULT_EXCHANGE;
         const adapter = createExchangeAdapter(exchangeName, { apiKey, secret: apiSecret, testnet: user.exchangeTestnet });
         if (!adapter.fetchPermissions) {

@@ -1,11 +1,14 @@
 import { getAllStrategies } from '../engine/strategies/index.js';
 import { DEFAULTS, DEFAULT_ASSETS, ERROR_MSG } from '../utils/constants.js';
 import type { BotConfig, BotMode } from '../types/index.js';
+import { isValidMasterKey } from '../utils/crypto.js';
 
 export interface EnvConfig {
   port: number;
   apiKey: string;
   jwtSecret: string;
+  exchangeKeysEncKey: string;
+  exchangeKeysEncKeyPrevious?: string;
   adminUser: string;
   adminPass: string;
   botMode: BotMode;
@@ -29,6 +32,17 @@ function assertStrongSecret(name: string, value: string, minLength: number): voi
   }
 }
 
+// The master key that encrypts the users' exchange API keys. It is separate
+// from JWT_SECRET, so a leaked or rotated JWT_SECRET does not affect it.
+function assertEncryptionKey(name: string, value: string): void {
+  if (/change[-_]?me/i.test(value)) {
+    throw new Error(`${name} still has the placeholder value from the example env file. Run "openssl rand -hex 32" and set the output.`);
+  }
+  if (!isValidMasterKey(value)) {
+    throw new Error(`${name} must be 64 hex characters (32 random bytes). Run "openssl rand -hex 32" and set the output.`);
+  }
+}
+
 export function loadEnv(): EnvConfig {
   const apiKey = process.env.API_KEY;
   const jwtSecret = process.env.JWT_SECRET;
@@ -41,10 +55,25 @@ export function loadEnv(): EnvConfig {
   assertStrongSecret('JWT_SECRET', jwtSecret, 32);
   assertStrongSecret('ADMIN_PASS', adminPass, 12);
 
+  const exchangeKeysEncKey = process.env.EXCHANGE_KEYS_ENC_KEY;
+  if (!exchangeKeysEncKey) {
+    throw new Error('EXCHANGE_KEYS_ENC_KEY is not set. Run "openssl rand -hex 32" and set the output.');
+  }
+  assertEncryptionKey('EXCHANGE_KEYS_ENC_KEY', exchangeKeysEncKey);
+  const exchangeKeysEncKeyPrevious = process.env.EXCHANGE_KEYS_ENC_KEY_PREVIOUS || undefined;
+  if (exchangeKeysEncKeyPrevious) {
+    assertEncryptionKey('EXCHANGE_KEYS_ENC_KEY_PREVIOUS', exchangeKeysEncKeyPrevious);
+    if (exchangeKeysEncKeyPrevious.toLowerCase() === exchangeKeysEncKey.toLowerCase()) {
+      throw new Error('EXCHANGE_KEYS_ENC_KEY_PREVIOUS must be different from EXCHANGE_KEYS_ENC_KEY.');
+    }
+  }
+
   return {
     port: Number(process.env.PORT) || DEFAULTS.PORT,
     apiKey,
     jwtSecret,
+    exchangeKeysEncKey,
+    exchangeKeysEncKeyPrevious,
     adminUser: process.env.ADMIN_USER || DEFAULTS.ADMIN_USER,
     adminPass,
     botMode: (process.env.BOT_MODE || DEFAULTS.BOT_MODE) as BotMode,

@@ -11,6 +11,7 @@ vi.mock('../../src/exchange/bybit.js', () => ({
 import { createDb } from '../../src/db/index.js';
 import { createBotManager } from '../../src/engine/bot-manager.js';
 import { clearMarketDataCache } from '../../src/exchange/market-data-cache.js';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 
 const ws = () => ({ broadcast: vi.fn(), broadcastToUser: vi.fn(), clientCount: vi.fn(), close: vi.fn() });
 
@@ -21,7 +22,7 @@ describe('Bot manager shares market data between users (P1)', () => {
     const db = createDb(':memory:');
     const a = db.createUser('a', null, 'h', 'regular');
     const b = db.createUser('b', null, 'h', 'regular');
-    const manager = createBotManager(db, ws() as any, 'test-secret');
+    const manager = createBotManager(db, ws() as any, TEST_CIPHER);
     await manager.getExchange(a.id).fetchCandles('BTC/USDT', '5m');
     await manager.getExchange(b.id).fetchCandles('BTC/USDT', '5m');
     expect(fetchCandles).toHaveBeenCalledTimes(1);

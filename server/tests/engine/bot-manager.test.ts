@@ -5,6 +5,7 @@ import { createDb, type Db } from '../../src/db/index.js';
 import type { WsBroadcaster } from '../../src/websocket/index.js';
 import fs from 'fs';
 import path from 'path';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 
 function mockBroadcaster(): WsBroadcaster {
   return {
@@ -78,7 +79,7 @@ describe('BotManager — cold-start closePosition', () => {
     const broadcaster = mockBroadcaster();
     const savedConfig = createBotConfig('paper');
     const db = mockDbForBotManager({ config: savedConfig });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     // closePosition calls getOrCreateBot → createOrchestrator → createTickLoop.
     // The orchestrator's closePositionManually looks up the position from
@@ -114,7 +115,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
       user: { exchangeKey: null, exchangeSecret: null },
       config: savedLiveConfig,
     });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     manager.ensureBot(1);
 
@@ -130,7 +131,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
       user: { exchangeKey: '', exchangeSecret: '' },
       config: savedLiveConfig,
     });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     manager.ensureBot(1);
 
@@ -149,7 +150,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
       user: { exchangeKey: 'some-encrypted-key', exchangeSecret: 'some-encrypted-secret' },
       config: savedLiveConfig,
     });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     manager.ensureBot(1);
 
@@ -163,7 +164,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
       user: { exchangeKey: null, exchangeSecret: null },
       config: savedPaperConfig,
     });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     manager.ensureBot(1);
 
@@ -185,7 +186,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
       },
       config: savedPaperConfig,
     });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     const exchange = manager.getExchange(1);
     // Paper adapter's name is `paper(<wrapped>)`.
@@ -202,7 +203,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
       user: { exchangeKey: null, exchangeSecret: null },
       config: savedLiveConfig,
     });
-    const manager = createBotManager(db, broadcaster, 'test-secret');
+    const manager = createBotManager(db, broadcaster, TEST_CIPHER);
 
     manager.ensureBot(1);
     manager.ensureBot(1);
@@ -217,7 +218,7 @@ describe('BotManager — mode=live + missing keys self-heal invariant', () => {
 describe('BotManager — persistent running-state', () => {
   it('startBot persists bot_enabled=true', () => {
     const db = mockDbForBotManager();
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.startBot(1);
 
@@ -227,7 +228,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('stopBot clears bot_enabled (user-initiated stop)', () => {
     const db = mockDbForBotManager({ enabledUserIds: [1] });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.startBot(1);
     manager.stopBot(1);
@@ -238,7 +239,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('killBot clears bot_enabled (user-initiated kill switch)', async () => {
     const db = mockDbForBotManager();
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.startBot(1);
     await manager.killBot(1, 'user');
@@ -248,7 +249,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('stopAll does NOT clear bot_enabled (pod shutdown preserves intent)', () => {
     const db = mockDbForBotManager();
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.startBot(1);
     expect(db.getBotEnabled(1)).toBe(true);
@@ -262,7 +263,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('resumeAll starts every user with bot_enabled=1 at boot', () => {
     const db = mockDbForBotManager({ enabledUserIds: [1, 2, 3] });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.resumeAll();
 
@@ -273,7 +274,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('runningCount returns the number of bots whose orchestrator status is running', () => {
     const db = mockDbForBotManager({ enabledUserIds: [1, 2, 3] });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     expect(manager.runningCount()).toBe(0);
 
@@ -295,7 +296,7 @@ describe('BotManager — persistent running-state', () => {
     // itself throws. The flag must stay false — otherwise resumeAll would
     // retry the failing creation on every pod restart forever.
     (db.getUserById as any) = vi.fn(() => { throw new Error('simulated creation failure'); });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     expect(() => manager.startBot(1)).toThrow();
     expect(db.getBotEnabled(1)).toBe(false);
@@ -303,7 +304,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('resumeAll is idempotent across multiple calls', () => {
     const db = mockDbForBotManager({ enabledUserIds: [1] });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.resumeAll();
     expect(manager.isRunning(1)).toBe(true);
@@ -318,7 +319,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('resumeAll is a no-op when no users are enabled', () => {
     const db = mockDbForBotManager({ enabledUserIds: [] });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     expect(() => manager.resumeAll()).not.toThrow();
     expect(manager.isRunning(1)).toBe(false);
@@ -326,7 +327,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('killBot with reason=admin also clears bot_enabled (admin actions require user reconfirm to resume)', async () => {
     const db = mockDbForBotManager();
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.startBot(1);
     expect(db.getBotEnabled(1)).toBe(true);
@@ -341,7 +342,7 @@ describe('BotManager — persistent running-state', () => {
 
   it('resetBot clears bot_enabled defensively', () => {
     const db = mockDbForBotManager();
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     manager.startBot(1);
     expect(db.getBotEnabled(1)).toBe(true);
@@ -366,7 +367,7 @@ describe('BotManager — persistent running-state', () => {
       if (id === 1) throw new Error('simulated decrypt failure');
       return { id, username: 'u2', exchangeKey: null, exchangeSecret: null, exchangeTestnet: true, exchangeName: 'bybit', paperBalance: 10000 };
     });
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
 
     expect(() => manager.resumeAll()).not.toThrow();
     expect(callCount).toBeGreaterThanOrEqual(2);
@@ -394,7 +395,7 @@ describe('BotManager — paper cash persistence across adapter recreation', () =
     db.updateUser(user.id, { paperBalance: 1000 });
 
     // Pod A — create manager, grab paper adapter, run a buy.
-    const managerA = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const managerA = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
     const exchangeA = managerA.getExchange(user.id);
     expect(exchangeA.name).toMatch(/^paper\(/);
 
@@ -411,7 +412,7 @@ describe('BotManager — paper cash persistence across adapter recreation', () =
 
     // Pod B — destroy the first manager, build a new one against the same DB.
     managerA.stopAll();
-    const managerB = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const managerB = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
     const exchangeB = managerB.getExchange(user.id);
     const balB = await exchangeB.fetchBalance();
 
@@ -429,7 +430,7 @@ describe('BotManager — paper cash persistence across adapter recreation', () =
       userId: user.id, testnet: false, exchange: '',
     });
 
-    const manager = createBotManager(db, mockBroadcaster(), 'test-secret');
+    const manager = createBotManager(db, mockBroadcaster(), TEST_CIPHER);
     const exchange = manager.getExchange(user.id);
     const bal = await exchange.fetchBalance();
 
