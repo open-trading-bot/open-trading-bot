@@ -203,6 +203,7 @@ export const CCXT_ORDER_STATUS = {
 
 // Export (JSON / CSV / TXT)
 export const EXPORT = {
+  JSON_CONTENT_TYPE: 'application/json; charset=utf-8',
   CSV_CONTENT_TYPE: 'text/csv; charset=utf-8',
   TEXT_CONTENT_TYPE: 'text/plain; charset=utf-8',
   TRADES_FILENAME_PREFIX: 'trades',

@@ -113,7 +113,7 @@ describe('Data Routes', () => {
 
   it('GET /api/trades/export forwards filters to the db', async () => {
     const db = mockDb();
-    const exportSpy = db.exportTrades as ReturnType<typeof vi.fn>;
+    const exportSpy = db.iterateTrades as ReturnType<typeof vi.fn>;
     const service = createDataService(db, mockBotManager());
     const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
@@ -132,7 +132,7 @@ describe('Data Routes', () => {
 
   it('GET /api/trades/export with no filters passes undefined', async () => {
     const db = mockDb();
-    const exportSpy = db.exportTrades as ReturnType<typeof vi.fn>;
+    const exportSpy = db.iterateTrades as ReturnType<typeof vi.fn>;
     const service = createDataService(db, mockBotManager());
     const controller = createDataController(service, db, TEST_CIPHER, mockBotService());
     const app = express();
