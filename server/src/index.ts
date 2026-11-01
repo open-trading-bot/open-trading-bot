@@ -24,7 +24,7 @@ migrateExchangeKeys(db, exchangeKeyCipher, env.jwtSecret);
 
 const getUser = (id: number) => db.getUserById(id);
 const { app, server } = createApp(env.apiKey, env.jwtSecret, getUser);
-const broadcaster = createWsServer(server, env.jwtSecret, env.apiKey, getUser);
+const broadcaster = createWsServer(server, env.jwtSecret, getUser);
 
 const botManager = createBotManager(db, broadcaster, exchangeKeyCipher);
 

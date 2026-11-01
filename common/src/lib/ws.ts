@@ -10,10 +10,12 @@ const handlers = new Set<WsEventHandler>();
 function connect() {
   if (sharedWs && sharedWs.readyState <= WebSocket.OPEN) return;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const token = localStorage.getItem('token');
-  const ws = new WebSocket(`${protocol}//${window.location.host}/ws${token ? `?token=${token}` : ''}`);
+  // The token goes in the first message, not in the URL. Proxies log URLs.
+  const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
   ws.onopen = () => {
+    const token = localStorage.getItem('token');
+    if (token) ws.send(JSON.stringify({ type: 'auth', token }));
     console.log('[ws] connected');
   };
 
