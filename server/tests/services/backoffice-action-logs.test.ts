@@ -10,6 +10,7 @@ function createMockDb(): Db {
     createUser: vi.fn().mockReturnValue({ id: 1, username: 'new', role: 'demo' }),
     updateUser: vi.fn(),
     deleteUser: vi.fn(),
+    bumpTokenVersion: vi.fn(),
     getLeads: vi.fn().mockReturnValue([]),
     getTrades: vi.fn().mockReturnValue([]),
     getOpenPositions: vi.fn().mockReturnValue([]),

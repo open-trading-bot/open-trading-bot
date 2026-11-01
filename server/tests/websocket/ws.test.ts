@@ -18,7 +18,7 @@ describe('WebSocket Server', () => {
 
   async function setup(): Promise<void> {
     server = http.createServer();
-    broadcaster = createWsServer(server, TEST_JWT_SECRET, TEST_API_KEY);
+    broadcaster = createWsServer(server, TEST_JWT_SECRET, TEST_API_KEY, () => null);
     await new Promise<void>((resolve) => {
       server.listen(0, () => {
         port = (server.address() as { port: number }).port;

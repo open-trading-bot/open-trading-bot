@@ -37,8 +37,11 @@ export function createRiskManager(config: RiskConfig): RiskManager {
   return {
     evaluate(input: RiskInput): RiskResult {
       const rejected = (reason: string): RiskResult => ({ approved: false, amount: 0, quantity: 0, stopLoss: 0, reason });
-      if (input.openPositions >= current.maxOpenPositions) return rejected(`Rejected: max positions (${current.maxOpenPositions}) reached`);
-      if (input.dailyLoss >= current.dailyLossLimit) return rejected(`Rejected: daily loss limit ($${current.dailyLossLimit}) exceeded`);
+      // Position-count and loss limits stop the bot from opening new risk.
+      // They must never block an exit: a sell only reduces exposure.
+      const isEntry = input.side === 'buy';
+      if (isEntry && input.openPositions >= current.maxOpenPositions) return rejected(`Rejected: max positions (${current.maxOpenPositions}) reached`);
+      if (isEntry && input.dailyLoss >= current.dailyLossLimit) return rejected(`Rejected: daily loss limit ($${current.dailyLossLimit}) exceeded`);
       if (input.confidence < current.minConfidence) return rejected(`Rejected: confidence ${(input.confidence * 100).toFixed(0)}% below minimum ${(current.minConfidence * 100).toFixed(0)}%`);
       if (input.side === 'buy' && current.tradeAmount > input.availableBalance) return rejected(`Rejected: trade amount ($${current.tradeAmount}) exceeds available balance ($${input.availableBalance.toFixed(2)})`);
       const quantity = current.tradeAmount / input.price;

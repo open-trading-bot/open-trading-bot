@@ -61,14 +61,21 @@ The server does not start without `API_KEY`, `JWT_SECRET` and `ADMIN_PASS`.
 | `DAILY_LOSS_LIMIT` | The bot stops trading for the day after this loss |
 | `MAX_OPEN_POSITIONS` | Maximum number of open positions |
 | `MIN_CONFIDENCE` | Minimum strategy confidence needed to open a trade |
-| `TICK_INTERVAL` | Time between two ticks, in seconds |
+| `TICK_INTERVAL` | Time between two ticks, in seconds. Minimum: `10` |
 | `LOG_LEVEL` | Log level (for example `info`) |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Email settings for user invitations (optional) |
 | `PUBLIC_APP_URL` | Base URL of the dashboard. Invitation links use this URL. |
 | `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY` | reCAPTCHA on login (optional) |
+| `TRUST_PROXY` | Proxies that can set the client IP (Express `trust proxy`). Default: private networks only. Set it when a proxy outside your network is in front of the server. |
 | `GIT_COMMIT_SHA` | Build version that the UI shows (optional) |
 
 Use long random values for the secrets. Example: `openssl rand -hex 32`.
+
+The server checks the secrets when it starts. It does not start in these conditions:
+
+- A secret still contains `change-me` from the example env file.
+- `API_KEY` or `JWT_SECRET` has fewer than 32 characters.
+- `ADMIN_PASS` has fewer than 12 characters.
 
 ## Running with Docker
 

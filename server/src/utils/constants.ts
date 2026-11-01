@@ -151,6 +151,8 @@ export const RATE_LIMITS = {
   // Backtests are CPU work on the main thread. Limit them per user.
   BACKTEST: { maxAttempts: 10, windowMs: 60 * 1000 },
   LOGIN: { maxAttempts: 5, windowMs: 15 * 60 * 1000, lockoutMs: 30 * 60 * 1000 },
+  // Per-account limit. It stops a password guess that rotates IP addresses.
+  LOGIN_ACCOUNT: { maxAttempts: 10, windowMs: 15 * 60 * 1000, lockoutMs: 15 * 60 * 1000 },
   INTEREST: { maxAttempts: 3, windowMs: 60 * 60 * 1000 },
   VERIFY_EXCHANGE: { maxAttempts: 5, windowMs: 15 * 60 * 1000, lockoutMs: 15 * 60 * 1000 },
   // Key-permissions check is a passive read on the stored key. Fires on

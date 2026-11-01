@@ -2,8 +2,9 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server, IncomingMessage } from 'http';
 import type { WsEvent } from '../types/index.js';
 import { WS_EVENTS } from '../utils/constants.js';
-import { isBlocked } from '../utils/token-blocklist.js';
-import jwt from 'jsonwebtoken';
+import { verifyUserToken } from '../utils/jwt.js';
+import { safeEqual } from '../middleware/auth.js';
+import type { DbUser } from '../db/index.js';
 
 export interface WsBroadcaster {
   broadcast(event: WsEvent): void; // Used by per-user wrappers in bot-manager
@@ -17,31 +18,26 @@ interface AuthResult {
   userId?: number;
 }
 
-function authenticateWs(req: IncomingMessage, jwtSecret: string, apiKey: string): AuthResult {
+function authenticateWs(req: IncomingMessage, jwtSecret: string, apiKey: string, getUser: (id: number) => DbUser | null): AuthResult {
   const url = new URL(req.url || '', 'http://localhost');
   const token = url.searchParams.get('token');
 
   if (token) {
-    // Try JWT
-    try {
-      const payload = jwt.verify(token, jwtSecret) as { id: number; username: string; role: string };
-      if (isBlocked(payload.id)) return { authenticated: false };
-      return { authenticated: true, userId: payload.id };
-    } catch { /* not a valid JWT, try as API key */ }
-
+    const user = verifyUserToken(token, jwtSecret, getUser);
+    if (user) return { authenticated: true, userId: user.id };
     // Try API key — admin with id 0
-    if (token === apiKey) return { authenticated: true, userId: 0 };
+    if (safeEqual(token, apiKey)) return { authenticated: true, userId: 0 };
   }
 
   return { authenticated: false };
 }
 
-export function createWsServer(server: Server, jwtSecret: string, apiKey: string): WsBroadcaster {
+export function createWsServer(server: Server, jwtSecret: string, apiKey: string, getUser: (id: number) => DbUser | null): WsBroadcaster {
   const wss = new WebSocketServer({ server, path: '/ws' });
   const userConnections = new Map<number, Set<WebSocket>>();
 
   wss.on('connection', (ws, req) => {
-    const auth = authenticateWs(req, jwtSecret, apiKey);
+    const auth = authenticateWs(req, jwtSecret, apiKey, getUser);
     if (!auth.authenticated || auth.userId === undefined) {
       ws.close(4001, 'Unauthorized');
       return;

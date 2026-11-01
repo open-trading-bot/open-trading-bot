@@ -45,6 +45,12 @@ export function createOrchestrator(
   // blip doesn't spin every tick forever.
   const closingPositions = new Set<string>();
   const stopLossLastAttempt = new Map<string, number>();
+  let inFlightTick: Promise<void> | null = null;
+
+  async function waitForIdle(): Promise<void> {
+    if (!inFlightTick) return;
+    try { await inFlightTick; } catch { /* the tick logs its own errors */ }
+  }
 
   function getDailyLoss(): number {
     const trades = config.mode === 'live'
@@ -154,13 +160,26 @@ export function createOrchestrator(
     return actionSignals.sort((a, b) => b.confidence - a.confidence)[0];
   }
 
-  function closeSellPosition(symbol: string, exitPrice: number, openPositions: Position[]): number | null {
-    const match = openPositions.find((p) => p.symbol === symbol && p.side === 'buy');
-    if (!match) return null;
-    const pnl = (exitPrice - match.entryPrice) * match.quantity;
-    db.removePosition(userId, match.id);
-    logger.info(`[position] Closed: ${symbol} entry=${match.entryPrice} exit=${exitPrice} pnl=$${pnl.toFixed(2)}`);
-    return pnl;
+  // A sell signal exits the open long with its full quantity. Sizing the
+  // exit from tradeAmount instead would leave coins untracked when the price
+  // rose, or oversell (and open an untracked short on futures) when it fell.
+  async function closeLongOnSignal(pos: Position, signal: Signal): Promise<void> {
+    if (closingPositions.has(pos.id)) {
+      logger.info(`[tick] ${pos.symbol}: position ${pos.id} is already closing — skipping sell signal`);
+      return;
+    }
+    closingPositions.add(pos.id);
+    try {
+      const orderResult = await exchange.closePosition(pos.symbol, pos.side, pos.quantity, pos.marketType);
+      if (orderResult.status !== 'filled' && orderResult.status !== 'partial') return;
+      const exitPrice = orderResult.price || pos.currentPrice;
+      const pnl = (exitPrice - pos.entryPrice) * pos.quantity;
+      recordTrade(pos.symbol, signal, { ...orderResult, price: exitPrice, quantity: orderResult.quantity || pos.quantity }, pos.amount, pnl, 'bot');
+      db.removePosition(userId, pos.id);
+      logger.info(`[position] Closed: ${pos.symbol} entry=${pos.entryPrice} exit=${exitPrice} pnl=$${pnl.toFixed(2)}`);
+    } finally {
+      closingPositions.delete(pos.id);
+    }
   }
 
   function isTestnet(): boolean {
@@ -217,24 +236,14 @@ export function createOrchestrator(
     }
   }
 
-  function applyFilledOrder(
-    asset: { symbol: string; marketType: string },
+  function applyFilledBuy(
+    asset: { symbol: string },
     signal: Signal,
     orderResult: { orderId: string; price: number; quantity: number },
     riskResult: { amount: number; stopLoss: number },
-    openPositions: Position[],
   ): void {
-    const pnl = signal.action === 'sell'
-      ? closeSellPosition(asset.symbol, orderResult.price, openPositions)
-      : null;
-    // Only stamp a close reason when a sell signal actually closed an existing
-    // long. A bare sell with no matching position is not a close (it's a
-    // no-op trade row) and should leave closeReason null.
-    const closeReason: CloseReason | null = signal.action === 'sell' && pnl !== null ? 'bot' : null;
-    recordTrade(asset.symbol, signal, orderResult, riskResult.amount, pnl ?? 0, closeReason);
-    if (signal.action === 'buy') {
-      openBuyPosition(asset.symbol, signal, orderResult, riskResult.amount, riskResult.stopLoss);
-    }
+    recordTrade(asset.symbol, signal, orderResult, riskResult.amount, 0, null);
+    openBuyPosition(asset.symbol, signal, orderResult, riskResult.amount, riskResult.stopLoss);
   }
 
   async function processAsset(
@@ -243,6 +252,8 @@ export function createOrchestrator(
     availableBalance: number,
   ): Promise<void> {
     const signals = await collectSignals(asset.symbol, asset.marketType, enabledStrategies);
+    // The bot can be stopped or killed while this tick waits on the exchange.
+    if (status !== 'running') return;
     const bestSignal = pickBestSignal(signals);
     if (!bestSignal) {
       logger.info(`[tick] ${asset.symbol}: all strategies say hold`);
@@ -256,14 +267,16 @@ export function createOrchestrator(
     // Submitting a bare sell would (a) in paper mode mint free cash via the
     // adapter's sell-credit shortcut, and (b) in live futures open a real
     // short position the bot never tracks. The bot is long-only by design.
-    if (bestSignal.action === 'sell') {
-      const hasMatchingLong = openPositions.some(
-        (p) => p.symbol === asset.symbol && p.side === 'buy',
-      );
-      if (!hasMatchingLong) {
-        logger.info(`[tick] ${asset.symbol}: sell signal with no matching long — skipping (bot is long-only)`);
-        return;
-      }
+    const openLong = openPositions.find((p) => p.symbol === asset.symbol && p.side === 'buy');
+    if (bestSignal.action === 'sell' && !openLong) {
+      logger.info(`[tick] ${asset.symbol}: sell signal with no matching long — skipping (bot is long-only)`);
+      return;
+    }
+    // One long per symbol. A signal can stay true for many ticks (for example
+    // RSI below 30 for 20 minutes); without this check every tick buys again.
+    if (bestSignal.action === 'buy' && openLong) {
+      logger.info(`[tick] ${asset.symbol}: buy signal but a long is already open — skipping`);
+      return;
     }
 
     const riskResult = riskManager.evaluate({
@@ -276,15 +289,24 @@ export function createOrchestrator(
       return;
     }
 
-    logger.info(`[tick] ${asset.symbol}: placing ${bestSignal.action} order, amount: ${riskResult.amount}`);
+    if (status !== 'running') return;
+
+    if (bestSignal.action === 'sell') {
+      await closeLongOnSignal(openLong!, bestSignal);
+      return;
+    }
+
+    logger.info(`[tick] ${asset.symbol}: placing buy order, amount: ${riskResult.amount}`);
     const orderResult = await exchange.placeOrder({
-      symbol: asset.symbol, side: bestSignal.action as 'buy' | 'sell',
+      symbol: asset.symbol, side: 'buy',
       amount: riskResult.amount, type: config.orderType, marketType: asset.marketType,
     });
     logger.info(`[tick] ${asset.symbol}: order ${orderResult.status} — price: ${orderResult.price}, qty: ${orderResult.quantity}`);
 
+    // Record a fill even if the bot stopped while the order was in flight:
+    // the order exists on the exchange, so the position must be tracked.
     if (orderResult.status === 'filled' || orderResult.status === 'partial') {
-      applyFilledOrder(asset, bestSignal, orderResult, riskResult, openPositions);
+      applyFilledBuy(asset, bestSignal, orderResult, riskResult);
     }
   }
 
@@ -297,6 +319,7 @@ export function createOrchestrator(
 
     let lastBalance: { free: number; totalEquity: number } | null = null;
     for (const asset of enabledAssets) {
+      if (status !== 'running') break;
       try {
         const balance = await fetchBalanceForTick();
         if (balance !== null) lastBalance = balance;
@@ -338,13 +361,23 @@ export function createOrchestrator(
     async tick() {
       if (status !== 'running') return;
       logger.info(`[tick] Running tick at ${new Date().toISOString()}`);
-      await executeTick();
+      const run = executeTick();
+      inFlightTick = run;
+      try {
+        await run;
+      } finally {
+        if (inFlightTick === run) inFlightTick = null;
+      }
       lastTickAt = Date.now();
       broadcaster.broadcast({ type: WS_EVENTS.TICK_COMPLETE, data: { lastTickAt } } as any);
       logger.info('[tick] Tick complete');
     },
     async killSwitch(reason: 'user' | 'admin') {
       this.stop();
+      // Wait for a running tick to finish. Otherwise an order that the tick
+      // already sent can fill after the positions below are closed, and leave
+      // an open position on a killed bot.
+      await waitForIdle();
       const positions = db.getOpenPositions(userId);
       await Promise.all(positions.map(async (pos) => {
         try {
