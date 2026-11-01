@@ -9,7 +9,7 @@ import { createBinanceAdapter } from '../exchange/binance.js';
 import { createPaperAdapter } from '../exchange/paper.js';
 import { withSharedMarketData } from '../exchange/market-data-cache.js';
 import { createBotConfig, reconcileStrategies } from '../config/index.js';
-import { decrypt } from '../utils/crypto.js';
+import type { ExchangeKeyCipher } from '../utils/crypto.js';
 import { DEFAULTS, DEFAULT_EXCHANGE } from '../utils/constants.js';
 import logger from '../utils/logger.js';
 
@@ -36,7 +36,7 @@ export interface BotManager {
   runningCount(): number;
 }
 
-export function createBotManager(db: Db, broadcaster: WsBroadcaster, jwtSecret: string): BotManager {
+export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: ExchangeKeyCipher): BotManager {
   const bots = new Map<number, UserBot>();
 
   function createAdapter(name: string, config: { apiKey: string; secret: string; testnet: boolean }): ExchangeAdapter {
@@ -52,8 +52,8 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, jwtSecret: 
     let realAdapter: ExchangeAdapter;
     if (user?.exchangeKey && user?.exchangeSecret) {
       try {
-        const apiKey = decrypt(user.exchangeKey, jwtSecret);
-        const apiSecret = decrypt(user.exchangeSecret, jwtSecret);
+        const apiKey = keyCipher.decrypt(user.exchangeKey);
+        const apiSecret = keyCipher.decrypt(user.exchangeSecret);
         realAdapter = createAdapter(exchangeName, { apiKey, secret: apiSecret, testnet: user.exchangeTestnet });
       } catch (err) {
         logger.error(`[bot-manager] Failed to create exchange for user ${userId}: ${err}`);

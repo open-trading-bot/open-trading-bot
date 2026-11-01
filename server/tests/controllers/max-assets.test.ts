@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createDataController } from '../../src/controllers/data.js';
 import type { Db } from '../../src/db/index.js';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 
 function mockRes() {
   const res: any = { statusCode: 200 };
@@ -34,7 +35,7 @@ function makeAssets(count: number, enabled = true) {
 describe('updateConfig — max assets limit', () => {
   it('allows up to 10 enabled assets', async () => {
     const service = mockDataService();
-    const ctrl = createDataController(service, mockDb(), 'secret');
+    const ctrl = createDataController(service, mockDb(), TEST_CIPHER);
     const res = mockRes();
 
     await ctrl.updateConfig(mockReq({ assets: makeAssets(10) }), res);
@@ -46,7 +47,7 @@ describe('updateConfig — max assets limit', () => {
 
   it('rejects more than 10 enabled assets', async () => {
     const service = mockDataService();
-    const ctrl = createDataController(service, mockDb(), 'secret');
+    const ctrl = createDataController(service, mockDb(), TEST_CIPHER);
     const res = mockRes();
 
     await ctrl.updateConfig(mockReq({ assets: makeAssets(11) }), res);
@@ -57,7 +58,7 @@ describe('updateConfig — max assets limit', () => {
 
   it('allows more than 10 assets if some are disabled', async () => {
     const service = mockDataService();
-    const ctrl = createDataController(service, mockDb(), 'secret');
+    const ctrl = createDataController(service, mockDb(), TEST_CIPHER);
     const res = mockRes();
 
     const assets = [...makeAssets(10), ...makeAssets(5, false)];
@@ -69,7 +70,7 @@ describe('updateConfig — max assets limit', () => {
 
   it('allows config updates without assets field', async () => {
     const service = mockDataService();
-    const ctrl = createDataController(service, mockDb(), 'secret');
+    const ctrl = createDataController(service, mockDb(), TEST_CIPHER);
     const res = mockRes();
 
     await ctrl.updateConfig(mockReq({ tradeAmount: 200 }), res);
@@ -80,7 +81,7 @@ describe('updateConfig — max assets limit', () => {
 
   it('allows up to 20 total assets', async () => {
     const service = mockDataService();
-    const ctrl = createDataController(service, mockDb(), 'secret');
+    const ctrl = createDataController(service, mockDb(), TEST_CIPHER);
     const res = mockRes();
 
     const assets = [...makeAssets(10), ...makeAssets(10, false)];
@@ -92,7 +93,7 @@ describe('updateConfig — max assets limit', () => {
 
   it('rejects more than 20 total assets', async () => {
     const service = mockDataService();
-    const ctrl = createDataController(service, mockDb(), 'secret');
+    const ctrl = createDataController(service, mockDb(), TEST_CIPHER);
     const res = mockRes();
 
     const assets = [...makeAssets(10), ...makeAssets(11, false)];
