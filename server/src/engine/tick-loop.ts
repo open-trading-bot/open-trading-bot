@@ -12,6 +12,7 @@ const STUCK_LOG_MULTIPLIER = 3;
 
 export function createTickLoop(orchestrator: Orchestrator) {
   let tickLoop: ReturnType<typeof setInterval> | null = null;
+  let offsetTimer: ReturnType<typeof setTimeout> | null = null;
   let tickInFlight = false;
   let tickStartedAt: number | null = null;
   let tickCounter = 0;
@@ -48,21 +49,35 @@ export function createTickLoop(orchestrator: Orchestrator) {
     }
   }
 
-  function startLoop() {
+  function clearTimers() {
+    if (offsetTimer) { clearTimeout(offsetTimer); offsetTimer = null; }
     if (tickLoop) { clearInterval(tickLoop); tickLoop = null; }
+  }
+
+  function startLoop() {
+    clearTimers();
     const interval = intervalMs();
     logger.info(`[server] Tick loop started (${orchestrator.getConfig().tickInterval}s interval)`);
-    tickLoop = setInterval(() => { runGuardedTick(); }, interval);
     runGuardedTick();
+    // Start the repeating interval at a random offset. When the server resumes
+    // all bots at boot, their ticks then spread over the interval instead of
+    // hitting the exchange in the same second.
+    offsetTimer = setTimeout(() => {
+      offsetTimer = null;
+      runGuardedTick();
+      tickLoop = setInterval(() => { runGuardedTick(); }, interval);
+    }, Math.floor(Math.random() * interval));
   }
+
+  function isLooping() { return tickLoop !== null || offsetTimer !== null; }
 
   return {
     ...orchestrator,
-    start() { originalStart(); if (!tickLoop) { startLoop(); } },
-    stop() { originalStop(); if (tickLoop) { logger.info('[server] Tick loop stopped'); clearInterval(tickLoop); tickLoop = null; } },
+    start() { originalStart(); if (!isLooping()) { startLoop(); } },
+    stop() { originalStop(); if (isLooping()) { logger.info('[server] Tick loop stopped'); clearTimers(); } },
     updateConfig(update: Partial<BotConfig>) {
       orchestrator.updateConfig(update);
-      if (update.tickInterval && tickLoop) {
+      if (update.tickInterval && isLooping()) {
         logger.info(`[server] Tick interval changed to ${update.tickInterval}s, restarting loop`);
         startLoop();
       }
