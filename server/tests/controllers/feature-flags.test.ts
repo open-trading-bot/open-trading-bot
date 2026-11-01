@@ -95,7 +95,9 @@ describe('BackofficeController — feature flags', () => {
 
     it('returns 400 when service throws (e.g. duplicate id)', () => {
       flagService = createMockFlagService({
-        createFlag: vi.fn().mockImplementation(() => { throw new Error('Flag already exists'); }),
+        createFlag: vi.fn().mockImplementation(() => {
+          throw Object.assign(new Error('UNIQUE constraint failed: feature_flags.id'), { code: 'SQLITE_CONSTRAINT_PRIMARYKEY' });
+        }),
       });
       const ctrl = makeCtrl();
       const res = mockRes();

@@ -73,6 +73,12 @@ export const ERROR_MSG = {
   INVALID_PASSWORD: 'Password must be at least 8 characters and include an uppercase letter, a digit, and a special character',
   EMAIL_SEND_FAILED: 'Failed to send invitation email',
   INSUFFICIENT_PAPER_CASH: 'Insufficient paper cash for buy',
+  INTERNAL_ERROR: 'Internal server error',
+  INVALID_REQUEST: 'Invalid request',
+  FLAG_EXISTS: 'Flag already exists',
+  POSITION_NOT_FOUND: 'Position not found',
+  CLOSE_FAILED: 'Close failed',
+  IP_NOT_ALLOWED: 'Access from this IP address is not allowed',
 } as const;
 
 // WebSocket Event Types

@@ -4,6 +4,14 @@ import type { FeatureFlagService } from '../services/featureFlags.js';
 import type { InvitationsService } from '../services/invitations.js';
 import { HTTP_STATUS, ERROR_MSG, DEFAULTS, ROLES } from '../utils/constants.js';
 import { isPasswordValid } from '../utils/password.js';
+import { isUniqueViolation } from '../utils/errors.js';
+import logger from '../utils/logger.js';
+
+/** Logs the error and sends a generic 500. The client never sees err.message. */
+function sendInternalError(res: Response, err: unknown): void {
+  logger.error(`[backoffice] ${(err as Error)?.stack ?? err}`);
+  res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: ERROR_MSG.INTERNAL_ERROR });
+}
 
 export function createBackofficeController(
   backofficeService: BackofficeService,
@@ -39,7 +47,7 @@ export function createBackofficeController(
         if (err.message === ERROR_MSG.USERNAME_TAKEN) {
           res.status(HTTP_STATUS.BAD_REQUEST).json({ error: ERROR_MSG.USERNAME_TAKEN });
         } else {
-          res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: err.message });
+          sendInternalError(res, err);
         }
       }
     },
@@ -152,7 +160,11 @@ export function createBackofficeController(
         featureFlagService.createFlag(id, String(description), enabled === true, userId);
         res.json({ ok: true });
       } catch (err: any) {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({ error: err.message });
+        if (isUniqueViolation(err)) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({ error: ERROR_MSG.FLAG_EXISTS });
+        } else {
+          sendInternalError(res, err);
+        }
       }
     },
     updateFeatureFlag(req: Request, res: Response) {
@@ -233,7 +245,7 @@ export function createBackofficeController(
         } else if (err.message === ERROR_MSG.EMAIL_SEND_FAILED) {
           res.status(HTTP_STATUS.BAD_GATEWAY).json({ error: err.message });
         } else {
-          res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: err.message });
+          sendInternalError(res, err);
         }
       }
     },
@@ -251,7 +263,7 @@ export function createBackofficeController(
         } else if (err.message === ERROR_MSG.EMAIL_SEND_FAILED) {
           res.status(HTTP_STATUS.BAD_GATEWAY).json({ error: err.message });
         } else {
-          res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: err.message });
+          sendInternalError(res, err);
         }
       }
     },

@@ -2,6 +2,7 @@ import type { BotManager } from '../engine/bot-manager.js';
 import type { Db } from '../db/index.js';
 import { BOT_ACTIONS, ACTION_SOURCES, ERROR_MSG, DEFAULTS } from '../utils/constants.js';
 import logger from '../utils/logger.js';
+import { PublicError } from '../utils/errors.js';
 
 export interface BotService {
   getStatus(userId: number): { status: string; lastTickAt: number | null; config: any };
@@ -22,7 +23,7 @@ export function createBotService(botManager: BotManager, db: Db): BotService {
       const balance = await exchange.fetchBalance();
       if (balance.totalEquity < DEFAULTS.MIN_START_BALANCE) {
         logger.warn(`[bot-service] userId=${userId} blocked start: total equity ${balance.totalEquity} below minimum`);
-        throw new Error(ERROR_MSG.ZERO_BALANCE);
+        throw new PublicError(ERROR_MSG.ZERO_BALANCE);
       }
       // Block starts in live mode when the saved key is read-only. Otherwise
       // every tick would fail with a Bybit 10005 error. Defense-in-depth:
@@ -34,7 +35,7 @@ export function createBotService(botManager: BotManager, db: Db): BotService {
           const perms = await exchange.fetchPermissions();
           if (perms.readOnly || !perms.canTrade) {
             logger.warn(`[bot-service] userId=${userId} blocked start: API key is read-only`);
-            throw new Error(ERROR_MSG.READ_ONLY_KEY);
+            throw new PublicError(ERROR_MSG.READ_ONLY_KEY);
           }
         } catch (err: any) {
           // If the error was our own READ_ONLY_KEY throw, propagate it.

@@ -11,6 +11,7 @@ import { createRateLimiter, getClientIp } from '../utils/rate-limiter.js';
 import { parseConfigUpdate } from '../utils/config-schema.js';
 import { csvHeader, csvRow, csvAttachmentFilename } from '../utils/csv.js';
 import { buildTextTable, textAttachmentFilename } from '../utils/text.js';
+import logger from '../utils/logger.js';
 
 const verifyLimiter = createRateLimiter(RATE_LIMITS.VERIFY_EXCHANGE);
 const checkKeyLimiter = createRateLimiter(RATE_LIMITS.CHECK_EXCHANGE_KEY);
@@ -251,7 +252,8 @@ export function createDataController(dataService: DataService, db: Db, jwtSecret
       const result = await dataService.updateConfig(userId, update);
       if (!result.ok) {
         if ('error' in result && result.error === 'close_failed') {
-          res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: `Failed to close ${result.symbol}: ${result.message}` });
+          logger.error(`[data] config update: close ${result.symbol} failed for userId=${userId}: ${result.message}`);
+          res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: `Failed to close ${result.symbol}` });
           return;
         }
         res.status(HTTP_STATUS.BAD_REQUEST).json({ error: `${(result as { symbol: string }).symbol}: ${ERROR_MSG.SYMBOL_NOT_FOUND}` });
@@ -426,10 +428,12 @@ export function createDataController(dataService: DataService, db: Db, jwtSecret
       } catch (err: any) {
         const msg = err?.message ?? '';
         if (/not found/i.test(msg)) {
-          res.status(HTTP_STATUS.NOT_FOUND).json({ error: msg });
+          res.status(HTTP_STATUS.NOT_FOUND).json({ error: ERROR_MSG.POSITION_NOT_FOUND });
           return;
         }
-        res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: msg || 'Close failed' });
+        // The exchange error text can contain account details. Log it only.
+        logger.error(`[data] close position ${positionId} failed for userId=${userId}: ${msg}`);
+        res.status(HTTP_STATUS.INTERNAL_ERROR).json({ error: ERROR_MSG.CLOSE_FAILED });
       }
     },
   };

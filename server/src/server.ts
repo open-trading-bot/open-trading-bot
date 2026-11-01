@@ -5,7 +5,8 @@ import cors from 'cors';
 import http from 'http';
 import type { Router } from 'express';
 import { authMiddleware } from './middleware/auth.js';
-import { API_PATHS, HTTP_STATUS } from './utils/constants.js';
+import { API_PATHS, HTTP_STATUS, ERROR_MSG } from './utils/constants.js';
+import { PublicError } from './utils/errors.js';
 import logger from './utils/logger.js';
 
 import type { DbUser } from './db/index.js';
@@ -54,8 +55,15 @@ export function mountRoutes(app: express.Express, routers: {
   // Error handling middleware
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const errorHandler: express.ErrorRequestHandler = (err, req, res, _next) => {
-    logger.error(`[api-error] ${req.method} ${req.path} — ${err.message}`);
-    res.status(err.status || 400).json({ error: err.message });
+    if (err instanceof PublicError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    // Do not send the error text: it can contain SQL, exchange responses or
+    // parser details. Body parser errors carry a 4xx status.
+    const status = typeof err?.status === 'number' && err.status >= 400 && err.status < 500 ? err.status : HTTP_STATUS.INTERNAL_ERROR;
+    logger.error(`[api-error] ${req.method} ${req.path} — ${err?.stack ?? err}`);
+    res.status(status).json({ error: status === HTTP_STATUS.INTERNAL_ERROR ? ERROR_MSG.INTERNAL_ERROR : ERROR_MSG.INVALID_REQUEST });
   };
   app.use(errorHandler);
 
