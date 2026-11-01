@@ -2,6 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import http from 'http';
 import type { Router } from 'express';
 import { authMiddleware } from './middleware/auth.js';
@@ -22,11 +23,38 @@ export function trustProxySetting(value = process.env.TRUST_PROXY): string | num
   return /^\d+$/.test(value.trim()) ? Number(value) : value;
 }
 
+/**
+ * Content-Security-Policy for the API and for the client files that the
+ * server serves (root Dockerfile). The nginx configs in docker/ set the same
+ * policy. The apps load scripts and frames only from reCAPTCHA, and coin icons
+ * from cdn.jsdelivr.net. No upgrade-insecure-requests: it breaks plain HTTP
+ * on localhost.
+ */
+export const CSP_DIRECTIVES = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", 'https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'],
+  frameSrc: ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
+  imgSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net'],
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  fontSrc: ["'self'", 'data:'],
+  connectSrc: ["'self'"],
+  objectSrc: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+  frameAncestors: ["'none'"],
+};
+
 export function createApp(apiKey: string, jwtSecret: string, getUser: (id: number) => DbUser | null) {
   const app = express();
   const server = http.createServer(app);
   app.set('trust proxy', trustProxySetting());
+  app.disable('x-powered-by');
 
+  app.use(helmet({
+    contentSecurityPolicy: { useDefaults: false, directives: CSP_DIRECTIVES },
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  }));
   app.use(cors());
   app.use(express.json());
   app.use((req, _res, next) => {
