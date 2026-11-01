@@ -8,21 +8,29 @@ import { createApp, mountRoutes } from './server.js';
 import { ERROR_MSG } from './utils/constants.js';
 import { seedUsers } from './db/seed.js';
 import logger from './utils/logger.js';
+import { createExchangeKeyCipher } from './utils/crypto.js';
+import { migrateExchangeKeys } from './db/exchange-key-migration.js';
 
 const env = loadEnv();
 
 const db = createDb('./data/trading.db');
 seedUsers(db, env.adminUser, env.adminPass, process.env.SEED_DEMO_USERS === 'true');
 
+// Exchange keys use their own master key. The migration moves old rows
+// (key from JWT_SECRET) and rows of EXCHANGE_KEYS_ENC_KEY_PREVIOUS to the
+// current key. It runs before any bot reads the keys.
+const exchangeKeyCipher = createExchangeKeyCipher(env.exchangeKeysEncKey, env.exchangeKeysEncKeyPrevious);
+migrateExchangeKeys(db, exchangeKeyCipher, env.jwtSecret);
+
 const getUser = (id: number) => db.getUserById(id);
 const { app, server } = createApp(env.apiKey, env.jwtSecret, getUser);
 const broadcaster = createWsServer(server, env.jwtSecret, env.apiKey, getUser);
 
-const botManager = createBotManager(db, broadcaster, env.jwtSecret);
+const botManager = createBotManager(db, broadcaster, exchangeKeyCipher);
 
 const routers = createContainer({
   db, botManager,
-  jwtSecret: env.jwtSecret, adminUser: env.adminUser, adminPass: env.adminPass,
+  jwtSecret: env.jwtSecret, exchangeKeyCipher, adminUser: env.adminUser, adminPass: env.adminPass,
   recaptchaSecret: env.recaptchaSecret,
   resendApiKey: env.resendApiKey,
   emailFrom: env.emailFrom,

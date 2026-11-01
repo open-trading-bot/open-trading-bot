@@ -62,6 +62,7 @@ Start the open-trading-bot app on this computer in paper mode. Do these steps in
 6. In server/.env, set these values:
    - API_KEY: the output of: openssl rand -hex 32
    - JWT_SECRET: a new output of: openssl rand -hex 32
+   - EXCHANGE_KEYS_ENC_KEY: a new output of: openssl rand -hex 32
    - ADMIN_PASS: a random password with a minimum of 12 characters. Use an uppercase letter, a digit and a symbol.
    - BOT_MODE=paper
    - BYBIT_TESTNET=true
@@ -85,7 +86,7 @@ Rules:
 
 ## Configuration
 
-The server does not start without `API_KEY`, `JWT_SECRET` and `ADMIN_PASS`.
+The server does not start without `API_KEY`, `JWT_SECRET`, `EXCHANGE_KEYS_ENC_KEY` and `ADMIN_PASS`.
 
 | Variable | Description |
 |---|---|
@@ -95,6 +96,8 @@ The server does not start without `API_KEY`, `JWT_SECRET` and `ADMIN_PASS`.
 | `PORT` | Server port (default `3001`) |
 | `API_KEY` | Random string for API access |
 | `JWT_SECRET` | Random secret that signs login tokens |
+| `EXCHANGE_KEYS_ENC_KEY` | Key that encrypts the exchange API keys of the users in the database. Use 64 hex characters. Make the key with `openssl rand -hex 32`. Keep a backup of the key. If you lose the key, the users must add their exchange API keys again. |
+| `EXCHANGE_KEYS_ENC_KEY_PREVIOUS` | The old `EXCHANGE_KEYS_ENC_KEY` during a key rotation (optional). Refer to [Rotate the exchange-key encryption key](#rotate-the-exchange-key-encryption-key). |
 | `ADMIN_USER`, `ADMIN_PASS` | Username and password of the backoffice admin |
 | `SEED_DEMO_USERS` | `true` creates the demo users `demo/demo` and `user/user`. Use only for local tests. Default: `false` |
 | `TRADE_AMOUNT` | Amount per trade |
@@ -117,6 +120,28 @@ The server checks the secrets when it starts. It does not start in these conditi
 - A secret still contains `change-me` from the example env file.
 - `API_KEY` or `JWT_SECRET` has fewer than 32 characters.
 - `ADMIN_PASS` has fewer than 12 characters.
+- `EXCHANGE_KEYS_ENC_KEY` is not 64 hex characters.
+
+### Upgrade from a version without `EXCHANGE_KEYS_ENC_KEY`
+
+Old versions encrypted the exchange API keys with a key from `JWT_SECRET`. The server now uses `EXCHANGE_KEYS_ENC_KEY` for these keys.
+
+1. Make a backup of the database file `server/data/trading.db`. With Docker, the file is `data/trading.db` in the `server-data` volume.
+2. Make a new key with `openssl rand -hex 32`.
+3. Set the key in `EXCHANGE_KEYS_ENC_KEY`.
+4. Do not change `JWT_SECRET` before the first start.
+5. Start the server. The server encrypts the stored exchange API keys again with the new key. The log shows the number of users.
+6. Look for warnings in the log. A warning shows the ID of a user whose keys the server cannot read. This user must add the exchange API keys again.
+7. You can now change `JWT_SECRET`. The exchange API keys do not use `JWT_SECRET` after the first start.
+
+### Rotate the exchange-key encryption key
+
+1. Make a new key with `openssl rand -hex 32`.
+2. Move the current value of `EXCHANGE_KEYS_ENC_KEY` to `EXCHANGE_KEYS_ENC_KEY_PREVIOUS`.
+3. Set the new key in `EXCHANGE_KEYS_ENC_KEY`.
+4. Start the server. The server encrypts the stored exchange API keys again with the new key.
+5. Look for warnings in the log.
+6. Remove `EXCHANGE_KEYS_ENC_KEY_PREVIOUS`.
 
 ## Running with Docker
 

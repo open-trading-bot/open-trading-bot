@@ -8,6 +8,7 @@ vi.mock('../../src/exchange/bybit.js', () => ({
 }));
 
 import { createBybitAdapter } from '../../src/exchange/bybit.js';
+import { TEST_CIPHER } from '../utils/crypto-fixtures.js';
 const mockedCreateBybit = vi.mocked(createBybitAdapter);
 
 function mockRes() {
@@ -32,7 +33,7 @@ function mockDataService(): any {
 
 describe('verifyExchangeKeys', () => {
   it('returns 400 when apiKey is missing', async () => {
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiSecret: 'sec' }), res);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -40,7 +41,7 @@ describe('verifyExchangeKeys', () => {
   });
 
   it('returns 400 when apiSecret is missing', async () => {
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'key' }), res);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -51,7 +52,7 @@ describe('verifyExchangeKeys', () => {
       fetchBalance: vi.fn().mockResolvedValue({ total: 5000, free: 4500 }),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'key', apiSecret: 'sec', testnet: true, exchange: 'bybit' }), res);
 
@@ -64,7 +65,7 @@ describe('verifyExchangeKeys', () => {
       fetchBalance: vi.fn().mockResolvedValue({ total: 10000, free: 9000 }),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'key', apiSecret: 'sec', testnet: false }), res);
 
@@ -73,7 +74,7 @@ describe('verifyExchangeKeys', () => {
   });
 
   it('returns 400 on unsupported exchange', async () => {
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'key', apiSecret: 'sec', exchange: 'kraken' }), res);
 
@@ -86,7 +87,7 @@ describe('verifyExchangeKeys', () => {
       fetchBalance: vi.fn().mockRejectedValue(new Error('Invalid API key')),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'bad', apiSecret: 'bad', testnet: true, exchange: 'bybit' }), res);
 
@@ -95,7 +96,7 @@ describe('verifyExchangeKeys', () => {
   });
 
   it('returns 429 when rate limited', async () => {
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     // Use a unique IP to avoid interference from other tests
     const ip = '10.0.0.99';
     for (let i = 0; i < 5; i++) {
@@ -112,7 +113,7 @@ describe('verifyExchangeKeys', () => {
       fetchPermissions: vi.fn().mockResolvedValue({ readOnly: true, canTrade: false }),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'readonly', apiSecret: 'readonly', testnet: false, exchange: 'bybit' }), res);
 
@@ -127,7 +128,7 @@ describe('verifyExchangeKeys', () => {
       fetchPermissions: vi.fn().mockResolvedValue({ readOnly: false, canTrade: false }),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'noperm', apiSecret: 'noperm', testnet: false, exchange: 'bybit' }), res);
 
@@ -140,7 +141,7 @@ describe('verifyExchangeKeys', () => {
       fetchPermissions: vi.fn().mockResolvedValue({ readOnly: false, canTrade: true }),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'good', apiSecret: 'good', testnet: false, exchange: 'bybit' }), res);
 
@@ -153,7 +154,7 @@ describe('verifyExchangeKeys', () => {
       fetchPermissions: vi.fn().mockRejectedValue(new Error('permission endpoint unavailable')),
     } as any);
 
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.verifyExchangeKeys(mockReq({ apiKey: 'k', apiSecret: 's', testnet: false, exchange: 'bybit' }), res);
 
@@ -169,7 +170,7 @@ describe('updateExchangeKeys', () => {
     } as any);
 
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.updateExchangeKeys(mockReq({ apiKey: 'valid', apiSecret: 'valid', testnet: true }), res);
 
@@ -184,7 +185,7 @@ describe('updateExchangeKeys', () => {
     } as any);
 
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.updateExchangeKeys(mockReq({ apiKey: 'bad', apiSecret: 'bad', testnet: true }), res);
 
@@ -193,7 +194,7 @@ describe('updateExchangeKeys', () => {
   });
 
   it('returns 400 when apiKey is missing', async () => {
-    const ctrl = createDataController(mockDataService(), mockDb(), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDb(), TEST_CIPHER);
     const res = mockRes();
     await ctrl.updateExchangeKeys(mockReq({ apiSecret: 'sec' }), res);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -206,7 +207,7 @@ describe('updateExchangeKeys', () => {
     } as any);
 
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.updateExchangeKeys(mockReq({ apiKey: 'readonly', apiSecret: 'readonly', testnet: false }), res);
 
@@ -224,21 +225,23 @@ describe('updateExchangeKeys', () => {
     } as any);
 
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.updateExchangeKeys(mockReq({ apiKey: 'goodkey', apiSecret: 'goodsecret', testnet: false }), res);
 
     expect(res.json).toHaveBeenCalledWith({ hasKeys: true, testnet: false, keyHint: 'key', secretHint: 'ret', exchange: 'bybit' });
     expect(db.updateUserExchangeKeys).toHaveBeenCalled();
+    // S7: stored values use the v2 format from the exchange-key cipher.
+    const [, encKey, encSecret] = (db.updateUserExchangeKeys as any).mock.calls[0];
+    expect(encKey).toMatch(/^v2:/);
+    expect(encSecret).toMatch(/^v2:/);
+    expect(TEST_CIPHER.decrypt(encKey)).toBe('goodkey');
+    expect(TEST_CIPHER.decrypt(encSecret)).toBe('goodsecret');
   });
 });
 
 describe('checkExchangeKeyPermissions', () => {
-  // Helper: produce an encrypted placeholder string. The controller will call
-  // decrypt() on it with the secret 'secret'; we stub decrypt via the crypto
-  // util by passing a value that round-trips. The easiest path: encrypt real
-  // strings at setup time using the same secret the controller is constructed
-  // with.
+  // The controller decrypts the stored values with TEST_CIPHER.
 
   function mockDbWithUser(user: any): Db {
     return {
@@ -252,7 +255,7 @@ describe('checkExchangeKeyPermissions', () => {
   }
 
   it('returns hasKeys=false when user has no saved keys', async () => {
-    const ctrl = createDataController(mockDataService(), mockDbWithUser({ id: 1 }), 'secret');
+    const ctrl = createDataController(mockDataService(), mockDbWithUser({ id: 1 }), TEST_CIPHER);
     const res = mockRes();
     await ctrl.checkExchangeKeyPermissions(mockReq(), res);
     expect(res.json).toHaveBeenCalledWith({ hasKeys: false });
@@ -261,9 +264,8 @@ describe('checkExchangeKeyPermissions', () => {
   it('returns readOnly=true when the saved key is read-only', async () => {
     // We need a valid encrypted value that decrypt() can unwrap. Import
     // the real crypto helper and encrypt a known string first.
-    const { encrypt } = await import('../../src/utils/crypto.js');
-    const encKey = encrypt('real-api-key', 'secret');
-    const encSecret = encrypt('real-api-secret', 'secret');
+    const encKey = TEST_CIPHER.encrypt('real-api-key');
+    const encSecret = TEST_CIPHER.encrypt('real-api-secret');
 
     mockedCreateBybit.mockReturnValue({
       fetchPermissions: vi.fn().mockResolvedValue({ readOnly: true, canTrade: false }),
@@ -273,16 +275,15 @@ describe('checkExchangeKeyPermissions', () => {
       id: 1, exchangeKey: encKey, exchangeSecret: encSecret,
       exchangeTestnet: false, exchangeName: 'bybit',
     });
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.checkExchangeKeyPermissions(mockReq(), res);
     expect(res.json).toHaveBeenCalledWith({ hasKeys: true, checked: true, readOnly: true, canTrade: false });
   });
 
   it('returns canTrade=true when the saved key can trade', async () => {
-    const { encrypt } = await import('../../src/utils/crypto.js');
-    const encKey = encrypt('real-api-key', 'secret');
-    const encSecret = encrypt('real-api-secret', 'secret');
+    const encKey = TEST_CIPHER.encrypt('real-api-key');
+    const encSecret = TEST_CIPHER.encrypt('real-api-secret');
 
     mockedCreateBybit.mockReturnValue({
       fetchPermissions: vi.fn().mockResolvedValue({ readOnly: false, canTrade: true }),
@@ -292,16 +293,15 @@ describe('checkExchangeKeyPermissions', () => {
       id: 1, exchangeKey: encKey, exchangeSecret: encSecret,
       exchangeTestnet: false, exchangeName: 'bybit',
     });
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.checkExchangeKeyPermissions(mockReq(), res);
     expect(res.json).toHaveBeenCalledWith({ hasKeys: true, checked: true, readOnly: false, canTrade: true });
   });
 
   it('returns checked=false when fetchPermissions throws', async () => {
-    const { encrypt } = await import('../../src/utils/crypto.js');
-    const encKey = encrypt('real-api-key', 'secret');
-    const encSecret = encrypt('real-api-secret', 'secret');
+    const encKey = TEST_CIPHER.encrypt('real-api-key');
+    const encSecret = TEST_CIPHER.encrypt('real-api-secret');
 
     mockedCreateBybit.mockReturnValue({
       fetchPermissions: vi.fn().mockRejectedValue(new Error('network down')),
@@ -311,16 +311,15 @@ describe('checkExchangeKeyPermissions', () => {
       id: 1, exchangeKey: encKey, exchangeSecret: encSecret,
       exchangeTestnet: false, exchangeName: 'bybit',
     });
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.checkExchangeKeyPermissions(mockReq(), res);
     expect(res.json).toHaveBeenCalledWith({ hasKeys: true, checked: false, error: 'check-failed' });
   });
 
   it('returns checked=false when adapter has no fetchPermissions method', async () => {
-    const { encrypt } = await import('../../src/utils/crypto.js');
-    const encKey = encrypt('real-api-key', 'secret');
-    const encSecret = encrypt('real-api-secret', 'secret');
+    const encKey = TEST_CIPHER.encrypt('real-api-key');
+    const encSecret = TEST_CIPHER.encrypt('real-api-secret');
 
     mockedCreateBybit.mockReturnValue({
       // No fetchPermissions method
@@ -330,7 +329,7 @@ describe('checkExchangeKeyPermissions', () => {
       id: 1, exchangeKey: encKey, exchangeSecret: encSecret,
       exchangeTestnet: false, exchangeName: 'bybit',
     });
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     await ctrl.checkExchangeKeyPermissions(mockReq(), res);
     expect(res.json).toHaveBeenCalledWith({ hasKeys: true, checked: false });
@@ -340,7 +339,7 @@ describe('checkExchangeKeyPermissions', () => {
 describe('clearExchangeKeys', () => {
   it('clears keys and returns hasKeys false', () => {
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     ctrl.clearExchangeKeys(mockReq(), res);
 
@@ -352,7 +351,7 @@ describe('clearExchangeKeys', () => {
 describe('updateExchangeTestnet', () => {
   it('updates testnet to false', () => {
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     ctrl.updateExchangeTestnet(mockReq({ testnet: false }), res);
 
@@ -362,7 +361,7 @@ describe('updateExchangeTestnet', () => {
 
   it('updates testnet to true', () => {
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     ctrl.updateExchangeTestnet(mockReq({ testnet: true }), res);
 
@@ -372,7 +371,7 @@ describe('updateExchangeTestnet', () => {
 
   it('coerces non-boolean testnet to false', () => {
     const db = mockDb();
-    const ctrl = createDataController(mockDataService(), db, 'secret');
+    const ctrl = createDataController(mockDataService(), db, TEST_CIPHER);
     const res = mockRes();
     ctrl.updateExchangeTestnet(mockReq({ testnet: 'yes' }), res);
 

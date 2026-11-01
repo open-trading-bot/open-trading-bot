@@ -18,6 +18,7 @@ import { createAuthController } from './controllers/auth.js';
 import { createInterestController } from './controllers/interest.js';
 import { createBotController } from './controllers/bot.js';
 import { createDataController } from './controllers/data.js';
+import type { ExchangeKeyCipher } from './utils/crypto.js';
 import { createBacktestController } from './controllers/backtest.js';
 import { createBackofficeController } from './controllers/backoffice.js';
 
@@ -35,6 +36,7 @@ interface ContainerConfig {
   db: Db;
   botManager: BotManager;
   jwtSecret: string;
+  exchangeKeyCipher: ExchangeKeyCipher;
   adminUser: string;
   adminPass: string;
   recaptchaSecret?: string;
@@ -68,7 +70,7 @@ export function createContainer(config: ContainerConfig) {
   const authController = createAuthController(authService, invitationsService);
   const interestController = createInterestController(interestService);
   const botController = createBotController(botService);
-  const dataController = createDataController(dataService, config.db, config.jwtSecret, botService);
+  const dataController = createDataController(dataService, config.db, config.exchangeKeyCipher, botService);
   const backtestController = createBacktestController(backtestService);
   const backofficeController = createBackofficeController(backofficeService, featureFlagService, invitationsService);
 
