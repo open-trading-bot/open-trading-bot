@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { runBacktest, getSymbols } from '../lib/api';
 import { createChart, LineSeries, type IChartApi } from 'lightweight-charts';
 import { CryptoIcon, useLanguageStore, useThemeStore } from 'common';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore } from '../stores/bot';
 
 interface BacktestResult {
@@ -15,7 +16,7 @@ interface BacktestResult {
 }
 
 export function Backtest() {
-  const { backtestResult, backtestParams, setBacktestResult } = useBotStore();
+  const { backtestResult, backtestParams, setBacktestResult } = useBotStore(useShallow((s) => ({ backtestResult: s.backtestResult, backtestParams: s.backtestParams, setBacktestResult: s.setBacktestResult })));
   const [symbol, setSymbol] = useState(backtestParams?.symbol ?? 'BTC/USDT');
   const [strategy, setStrategy] = useState(backtestParams?.strategy ?? 'ma_crossover');
   const [interval, setInterval] = useState(backtestParams?.interval ?? '1h');

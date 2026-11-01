@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getStatus, updateConfig, getSymbols, getExchangeKeys, updateExchangeKeys, verifyExchangeKeys, updateExchangeTestnet, updatePreferences, killBot, getPortfolioBalance, checkExchangeKeyPermissions, invalidateExchangeKeyCheckCache, getVersion } from '../lib/api';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore } from '../stores/bot';
 import { useThemeStore, useLanguageStore, useAuthStore, languages, type Language, CryptoIcon } from 'common';
 
@@ -63,7 +64,7 @@ export function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [allSymbols, setAllSymbols] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { setTickInterval, setMode, setTestnet, totalBalance, status, setStatus, positions, setPositions, setPortfolio, setKeyReadOnly, keyReadOnly: storeKeyReadOnly } = useBotStore();
+  const { setTickInterval, setMode, setTestnet, totalBalance, status, setStatus, positions, setPositions, setPortfolio, setKeyReadOnly, keyReadOnly: storeKeyReadOnly } = useBotStore(useShallow((s) => ({ setTickInterval: s.setTickInterval, setMode: s.setMode, setTestnet: s.setTestnet, totalBalance: s.totalBalance, status: s.status, setStatus: s.setStatus, positions: s.positions, setPositions: s.setPositions, setPortfolio: s.setPortfolio, setKeyReadOnly: s.setKeyReadOnly, keyReadOnly: s.keyReadOnly })));
   const [showStopBotModal, setShowStopBotModal] = useState(false);
   const [exchangeKeys, setExchangeKeys] = useState<{ hasKeys: boolean; testnet: boolean; keyHint: string; secretHint: string }>({ hasKeys: false, testnet: true, keyHint: '', secretHint: '' });
   const [keyPermissions, setKeyPermissions] = useState<{ checked: boolean; readOnly: boolean; canTrade: boolean } | null>(null);

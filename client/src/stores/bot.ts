@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 
 const BALANCES_HIDDEN_KEY = 'balancesHidden';
+const MAX_SIGNALS = 100;
 function readBalancesHidden(): boolean {
   try {
     return localStorage.getItem(BALANCES_HIDDEN_KEY) === 'true';
@@ -98,6 +99,7 @@ interface BotStore {
   balancesHidden: boolean;
   toggleBalancesHidden: () => void;
   addSignal: (signal: Signal) => void;
+  addSignals: (signals: Signal[]) => void;
   setLastTickAt: (lastTickAt: number | null) => void;
   setTickInterval: (tickInterval: number) => void;
   setReady: (ready: boolean) => void;
@@ -144,7 +146,13 @@ export const useBotStore = create<BotStore>((set) => ({
   }),
 
   addSignal: (signal) => set((state) => {
-    return { signals: [signal, ...state.signals].slice(0, 100) };
+    return { signals: [signal, ...state.signals].slice(0, MAX_SIGNALS) };
+  }),
+  // One store update for all signals of a tick. The newest signal goes first,
+  // the same order as calling addSignal once for each signal.
+  addSignals: (signals) => set((state) => {
+    if (signals.length === 0) return {};
+    return { signals: [...signals].reverse().concat(state.signals).slice(0, MAX_SIGNALS) };
   }),
   setKeyReadOnly: (keyReadOnly) => set({ keyReadOnly }),
   setLastTickAt: (lastTickAt) => set({ lastTickAt }),

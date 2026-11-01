@@ -1,6 +1,7 @@
 // client/src/pages/Positions.tsx
 import { useEffect, useMemo, useCallback, useState } from 'react';
 import { getPositions, getTrades, getTradeFilters, closePosition, exportPositions as exportPositionsApi, exportTrades as exportTradesApi, exportPositionsCsv as exportPositionsCsvApi, exportTradesCsv as exportTradesCsvApi, exportPositionsTxt as exportPositionsTxtApi, exportTradesTxt as exportTradesTxtApi } from '../lib/api';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore } from '../stores/bot';
 import { CloseReasonBadge, CryptoIcon, useLanguageStore } from 'common';
 import { downloadJson, downloadBlob, todayStamp } from '../utils/download';
@@ -89,7 +90,7 @@ function formatDuration(ms: number, t: (k: any) => string): string {
 }
 
 export function Positions() {
-  const { positions, setPositions } = useBotStore();
+  const { positions, setPositions } = useBotStore(useShallow((s) => ({ positions: s.positions, setPositions: s.setPositions })));
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [closedTotal, setClosedTotal] = useState(0);
   const [tab, setTab] = useState<'open' | 'closed'>('open');

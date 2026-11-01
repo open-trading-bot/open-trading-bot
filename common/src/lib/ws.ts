@@ -1,11 +1,39 @@
 // client/src/lib/ws.ts
 import { useEffect, useRef } from 'react';
+import { useAuthStore } from '../stores/auth';
 
 type WsEventHandler = (event: { type: string; data: unknown }) => void;
 
+/** Close code the server sends when the token is missing, invalid or expired. */
+export const WS_CLOSE_UNAUTHORIZED = 4001;
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 30_000;
+
 let sharedWs: WebSocket | null = null;
 let refCount = 0;
+let attempt = 0;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 const handlers = new Set<WsEventHandler>();
+
+/**
+ * Delay before reconnect number `attempt` (0-based): exponential backoff with
+ * a cap, and "equal jitter" so that many tabs do not reconnect at the same
+ * time after a server restart.
+ */
+export function reconnectDelay(attemptNo: number, random: () => number = Math.random): number {
+  const ceiling = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** attemptNo);
+  return Math.round(ceiling / 2 + random() * (ceiling / 2));
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer || refCount === 0) return;
+  const delay = reconnectDelay(attempt);
+  attempt++;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (refCount > 0) connect();
+  }, delay);
+}
 
 function connect() {
   if (sharedWs && sharedWs.readyState <= WebSocket.OPEN) return;
@@ -14,12 +42,16 @@ function connect() {
   const ws = new WebSocket(`${protocol}//${window.location.host}/ws${token ? `?token=${token}` : ''}`);
 
   ws.onopen = () => {
-    console.log('[ws] connected');
+    attempt = 0;
   };
 
   ws.onmessage = (msg) => {
-    const event = JSON.parse(msg.data);
-    console.log('[ws] event:', event.type);
+    let event: { type: string; data: unknown };
+    try {
+      event = JSON.parse(msg.data);
+    } catch {
+      return;
+    }
     handlers.forEach((h) => h(event));
   };
 
@@ -27,9 +59,16 @@ function connect() {
     // Silently close — reconnect handled by onclose
   };
 
-  ws.onclose = () => {
-    sharedWs = null;
-    if (refCount > 0) setTimeout(connect, 3000);
+  ws.onclose = (ev) => {
+    if (sharedWs === ws) sharedWs = null;
+    if (ev.code === WS_CLOSE_UNAUTHORIZED) {
+      // The token is not valid. A reconnect can never succeed, so log out
+      // and go to the login page, the same as an HTTP 401 does.
+      useAuthStore.getState().logout();
+      if (window.location.pathname !== '/login') window.location.href = '/login';
+      return;
+    }
+    scheduleReconnect();
   };
 
   sharedWs = ws;
@@ -48,9 +87,14 @@ export function useWebSocket(onEvent: WsEventHandler) {
     return () => {
       handlers.delete(handler);
       refCount--;
-      if (refCount === 0 && sharedWs) {
-        if (sharedWs.readyState === WebSocket.OPEN) sharedWs.close();
-        sharedWs = null;
+      if (refCount === 0) {
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        attempt = 0;
+        if (sharedWs) {
+          const ws = sharedWs;
+          sharedWs = null;
+          if (ws.readyState === WebSocket.OPEN) ws.close();
+        }
       }
     };
   }, []);

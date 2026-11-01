@@ -179,6 +179,7 @@ export type WsEvent =
   | { type: 'price:update'; data: Ticker }
   | { type: 'trade:executed'; data: Trade }
   | { type: 'signal:generated'; data: Signal }
+  | { type: 'signals:batch'; data: Signal[] }
   | { type: 'position:update'; data: Position }
   | { type: 'bot:status'; data: { status: BotStatus; mode: BotMode } }
   | { type: 'alert'; data: { message: string; severity: 'info' | 'warning' | 'critical' } };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, useThemeStore, useLanguageStore, languages, type Language } from 'common';
 
@@ -142,7 +142,7 @@ export function Layout() {
         </header>
 
         <main className="p-6">
-          <Outlet />
+          <Suspense fallback={null}><Outlet /></Suspense>
         </main>
       </div>
     </div>

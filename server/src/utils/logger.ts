@@ -1,6 +1,15 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
+// Retention is capped by file count, not by age. A file rotates daily or at
+// its size limit, whichever comes first, so an age limit alone does not cap
+// disk use. Worst case on disk: MAX_FILES x size per log.
+export const LOG_RETENTION = {
+  MAX_FILES: 20,
+  COMBINED_MAX_SIZE_MB: 50,
+  ERROR_MAX_SIZE_MB: 20,
+} as const;
+
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
@@ -13,14 +22,14 @@ const logger = winston.createLogger({
       filename: 'logs/error-%DATE%.log',
       level: 'error',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '14d',
-      maxSize: '20m',
+      maxFiles: LOG_RETENTION.MAX_FILES,
+      maxSize: `${LOG_RETENTION.ERROR_MAX_SIZE_MB}m`,
     }),
     new DailyRotateFile({
       filename: 'logs/combined-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '14d',
-      maxSize: '50m',
+      maxFiles: LOG_RETENTION.MAX_FILES,
+      maxSize: `${LOG_RETENTION.COMBINED_MAX_SIZE_MB}m`,
     }),
   ],
 });
