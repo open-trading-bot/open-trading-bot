@@ -2,6 +2,7 @@ import type { Db } from '../db/index.js';
 import type { WsBroadcaster } from '../websocket/index.js';
 import type { ExchangeAdapter } from '../exchange/types.js';
 import type { BotConfig, BotMode, BotStatus, CloseReason } from '../types/index.js';
+import type { DbUser } from '../db/index.js';
 import { createOrchestrator, type Orchestrator } from './core/orchestrator.js';
 import { createTickLoop } from './tick-loop.js';
 import { createBybitAdapter } from '../exchange/bybit.js';
@@ -16,7 +17,31 @@ import logger from '../utils/logger.js';
 interface UserBot {
   orchestrator: Orchestrator & { updateConfig(update: Partial<BotConfig>): void; stop(): void; start(): void };
   exchange: ExchangeAdapter;
+  lastUsedAt: number;
+  /** Kill or manual-close calls in progress. A busy bot is never evicted. */
+  busy: number;
 }
+
+/** A real exchange adapter for read-only calls, cached while it is in use. */
+interface ReadAdapter {
+  fingerprint: string;
+  adapter: ExchangeAdapter;
+  lastUsedAt: number;
+}
+
+export interface BotManagerOptions {
+  /** A stopped, idle bot or an unused read adapter is removed after this time. */
+  idleTtlMs?: number;
+  /** How often the eviction sweep runs. */
+  sweepIntervalMs?: number;
+  /** Clock, for tests. */
+  now?: () => number;
+}
+
+export const BOT_MANAGER_DEFAULTS = {
+  IDLE_TTL_MS: 15 * 60_000,
+  SWEEP_INTERVAL_MS: 60_000,
+} as const;
 
 export interface BotManager {
   startBot(userId: number): void;
@@ -28,7 +53,16 @@ export interface BotManager {
   updateConfig(userId: number, update: Partial<BotConfig>): void;
   tick(userId: number): Promise<void>;
   isRunning(userId: number): boolean;
+  /** The bot's exchange. Creates the bot if it does not exist. */
   getExchange(userId: number): ExchangeAdapter;
+  /**
+   * An exchange for read-only calls (balance, symbols, candles). It never
+   * creates a bot. If a bot exists, this is the bot's exchange.
+   */
+  getReadExchange(userId: number): ExchangeAdapter;
+  /** Removes stopped, idle bots and unused read adapters. Returns the number of bots removed. */
+  evictIdle(): number;
+  botCount(): number;
   stopAll(): void;
   ensureBot(userId: number): void;
   resetBot(userId: number): void;
@@ -36,8 +70,17 @@ export interface BotManager {
   runningCount(): number;
 }
 
-export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: ExchangeKeyCipher): BotManager {
+export function createBotManager(
+  db: Db, broadcaster: WsBroadcaster, keyCipher: ExchangeKeyCipher, options: BotManagerOptions = {},
+): BotManager {
   const bots = new Map<number, UserBot>();
+  const readAdapters = new Map<number, ReadAdapter>();
+  const idleTtlMs = options.idleTtlMs ?? BOT_MANAGER_DEFAULTS.IDLE_TTL_MS;
+  const now = options.now ?? Date.now;
+  const sweep = setInterval(() => {
+    try { evictIdle(); } catch (err) { logger.error(`[bot-manager] eviction sweep failed: ${err}`); }
+  }, options.sweepIntervalMs ?? BOT_MANAGER_DEFAULTS.SWEEP_INTERVAL_MS);
+  sweep.unref();
 
   function createAdapter(name: string, config: { apiKey: string; secret: string; testnet: boolean }): ExchangeAdapter {
     const adapter = name === 'binance' ? createBinanceAdapter(config) : createBybitAdapter(config);
@@ -47,8 +90,11 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: 
 
   function createExchangeForUser(userId: number, mode: BotMode): ExchangeAdapter {
     const user = db.getUserById(userId);
-    const exchangeName = user?.exchangeName ?? DEFAULT_EXCHANGE;
+    return wrapForMode(userId, user, createRealAdapter(userId, user), mode);
+  }
 
+  function createRealAdapter(userId: number, user: DbUser | null): ExchangeAdapter {
+    const exchangeName = user?.exchangeName ?? DEFAULT_EXCHANGE;
     let realAdapter: ExchangeAdapter;
     if (user?.exchangeKey && user?.exchangeSecret) {
       try {
@@ -62,7 +108,10 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: 
     } else {
       realAdapter = createAdapter(exchangeName, { apiKey: '', secret: '', testnet: true });
     }
+    return realAdapter;
+  }
 
+  function wrapForMode(userId: number, user: DbUser | null, realAdapter: ExchangeAdapter, mode: BotMode): ExchangeAdapter {
     if (mode === 'paper') {
       const balance = user?.paperBalance ?? DEFAULTS.PAPER_BALANCE;
       return createPaperAdapter(realAdapter, balance, {
@@ -75,9 +124,14 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: 
     return realAdapter;
   }
 
+  /** Same key, secret, exchange and network give the same fingerprint. */
+  function adapterFingerprint(user: DbUser | null): string {
+    return [user?.exchangeName ?? DEFAULT_EXCHANGE, user?.exchangeKey ?? '', user?.exchangeSecret ?? '', user?.exchangeTestnet ? 1 : 0].join('|');
+  }
+
   function getOrCreateBot(userId: number): UserBot {
     let bot = bots.get(userId);
-    if (bot) return bot;
+    if (bot) { bot.lastUsedAt = now(); return bot; }
 
     let config = reconcileStrategies(db.getUserConfig(userId) ?? createBotConfig('paper'));
     if (config.mode === 'live') {
@@ -96,13 +150,67 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: 
       close() { /* no-op */ },
     };
     const orchestrator = createTickLoop(createOrchestrator(exchange, db, userBroadcaster, config, userId));
-    bot = { orchestrator, exchange };
+    bot = { orchestrator, exchange, lastUsedAt: now(), busy: 0 };
     bots.set(userId, bot);
+    // The bot has its own adapter now. Reads go to it.
+    readAdapters.delete(userId);
     logger.info(`[bot-manager] Created bot for user ${userId}`);
     return bot;
   }
 
+  function getReadExchange(userId: number): ExchangeAdapter {
+    const bot = bots.get(userId);
+    if (bot) { bot.lastUsedAt = now(); return bot.exchange; }
+
+    const user = db.getUserById(userId);
+    const fingerprint = adapterFingerprint(user);
+    let cached = readAdapters.get(userId);
+    if (!cached || cached.fingerprint !== fingerprint) {
+      cached = { fingerprint, adapter: createRealAdapter(userId, user), lastUsedAt: now() };
+      readAdapters.set(userId, cached);
+    }
+    cached.lastUsedAt = now();
+    // Same rule as getOrCreateBot: live mode without keys acts as paper.
+    const savedMode = db.getUserConfig(userId)?.mode ?? 'paper';
+    const mode: BotMode = savedMode === 'live' && user?.exchangeKey && user?.exchangeSecret ? 'live' : 'paper';
+    // A new paper wrapper for each call reads the current paper balance from
+    // the database, so a cached wrapper cannot show an old balance.
+    return wrapForMode(userId, user, cached.adapter, mode);
+  }
+
+  function evictIdle(): number {
+    const t = now();
+    let evicted = 0;
+    for (const [userId, bot] of bots) {
+      const idle = t - bot.lastUsedAt > idleTtlMs;
+      const stopped = bot.orchestrator.getStatus() !== 'running';
+      if (idle && stopped && bot.busy === 0 && bot.orchestrator.isIdle()) {
+        bots.delete(userId);
+        evicted++;
+      }
+    }
+    for (const [userId, read] of readAdapters) {
+      if (t - read.lastUsedAt > idleTtlMs) readAdapters.delete(userId);
+    }
+    if (evicted > 0) logger.info(`[bot-manager] Evicted ${evicted} idle stopped bot(s); ${bots.size} in memory`);
+    return evicted;
+  }
+
+  async function whileBusy<T>(bot: UserBot, work: () => Promise<T>): Promise<T> {
+    bot.busy++;
+    try {
+      return await work();
+    } finally {
+      bot.busy--;
+      bot.lastUsedAt = now();
+    }
+  }
+
   return {
+    getReadExchange,
+    evictIdle,
+    botCount() { return bots.size; },
+
     ensureBot(userId: number) {
       getOrCreateBot(userId);
     },
@@ -129,12 +237,12 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: 
     async killBot(userId: number, reason: 'user' | 'admin') {
       db.setBotEnabled(userId, false);
       const bot = bots.get(userId);
-      if (bot) await bot.orchestrator.killSwitch(reason);
+      if (bot) await whileBusy(bot, () => bot.orchestrator.killSwitch(reason));
     },
 
     async closePosition(userId: number, positionId: string, reason?: CloseReason) {
       const bot = getOrCreateBot(userId);
-      await bot.orchestrator.closePositionManually(positionId, reason);
+      await whileBusy(bot, () => bot.orchestrator.closePositionManually(positionId, reason));
     },
 
     getStatus(userId: number): BotStatus {
@@ -183,6 +291,8 @@ export function createBotManager(db: Db, broadcaster: WsBroadcaster, keyCipher: 
     },
 
     stopAll() {
+      clearInterval(sweep);
+      readAdapters.clear();
       for (const [userId, bot] of bots) {
         bot.orchestrator.stop();
         logger.info(`[bot-manager] Stopped bot for user ${userId}`);

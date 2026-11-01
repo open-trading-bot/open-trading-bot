@@ -29,7 +29,7 @@ export function createBacktestService(db: Db, botManager: BotManager): BacktestS
       // DB covers less than 90% of the range, or the result uses partial data.
       const expected = expectedCandleCount(interval, fromTs, toTs);
       if (candles.length === 0 || (expected !== null && candles.length < expected * 0.9)) {
-        const exchange = botManager.getExchange(userId);
+        const exchange = botManager.getReadExchange(userId);
         const limit = Math.min(expected ?? DEFAULTS.CANDLE_LIMIT, DEFAULTS.CANDLE_LIMIT);
         candles = await exchange.fetchCandles(symbol, interval, limit);
         db.insertCandles(symbol, interval, candles);

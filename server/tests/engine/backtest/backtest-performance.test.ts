@@ -40,7 +40,7 @@ describe('Backtest data coverage (P2)', () => {
     const fetched = candles(720, now - 720 * hour, hour);
     const db = { getCandles: vi.fn().mockReturnValue(recent), insertCandles: vi.fn() } as any;
     const exchange = { fetchCandles: vi.fn().mockResolvedValue(fetched) };
-    const botManager = { getExchange: vi.fn().mockReturnValue(exchange) } as any;
+    const botManager = { getReadExchange: vi.fn().mockReturnValue(exchange) } as any;
     await createBacktestService(db, botManager).run(1, 'BTC/USDT', 'rsi', '1h');
     expect(exchange.fetchCandles).toHaveBeenCalledWith('BTC/USDT', '1h', 720);
   });
@@ -50,7 +50,7 @@ describe('Backtest data coverage (P2)', () => {
     const now = Date.now();
     const db = { getCandles: vi.fn().mockReturnValue(candles(720, now - 720 * hour, hour)), insertCandles: vi.fn() } as any;
     const exchange = { fetchCandles: vi.fn() };
-    const botManager = { getExchange: vi.fn().mockReturnValue(exchange) } as any;
+    const botManager = { getReadExchange: vi.fn().mockReturnValue(exchange) } as any;
     await createBacktestService(db, botManager).run(1, 'BTC/USDT', 'rsi', '1h');
     expect(exchange.fetchCandles).not.toHaveBeenCalled();
   });

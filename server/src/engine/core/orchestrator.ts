@@ -16,6 +16,8 @@ export interface Orchestrator {
   closePositionManually(positionId: string, reason?: CloseReason): Promise<void>;
   getStatus(): BotStatus;
   getLastTickAt(): number | null;
+  /** False while a tick runs. A stopped bot can still finish a tick. */
+  isIdle(): boolean;
   getConfig(): BotConfig;
   updateConfig(update: Partial<BotConfig>): void;
 }
@@ -387,6 +389,9 @@ export function createOrchestrator(
         `[tick] user=${userId} assets=${tickStats.assets} signals=${tickSignals.length} `
         + `orders=${tickStats.orders} errors=${tickStats.errors} duration=${lastTickAt - startedAt}ms`,
       );
+    },
+    isIdle() {
+      return inFlightTick === null;
     },
     async killSwitch(reason: 'user' | 'admin') {
       this.stop();

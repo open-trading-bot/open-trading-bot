@@ -41,7 +41,7 @@ function mockDb(): Db {
 
 function mockBotManager(): BotManager {
   const exchange = { name: 'mock', fetchSymbols: vi.fn().mockResolvedValue([]), fetchTicker: vi.fn(), fetchCandles: vi.fn(), placeOrder: vi.fn(), cancelOrder: vi.fn(), fetchBalance: vi.fn().mockResolvedValue({ total: 10000, free: 9000, totalEquity: 10500 }), closePosition: vi.fn() };
-  return {
+  const manager: any = {
     startBot: vi.fn(), stopBot: vi.fn(), killBot: vi.fn(),
     getStatus: vi.fn().mockReturnValue('running'),
     getConfig: vi.fn().mockReturnValue({
@@ -52,6 +52,8 @@ function mockBotManager(): BotManager {
     updateConfig: vi.fn(), tick: vi.fn(), isRunning: vi.fn().mockReturnValue(true),
     getExchange: vi.fn().mockReturnValue(exchange), stopAll: vi.fn(), ensureBot: vi.fn(), resetBot: vi.fn(),
   };
+  manager.getReadExchange = vi.fn((id: number) => manager.getExchange(id));
+  return manager;
 }
 
 function mockBotService(overrides?: Partial<BotService>): BotService {
