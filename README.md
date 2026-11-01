@@ -106,7 +106,7 @@ The server does not start without `API_KEY`, `JWT_SECRET`, `EXCHANGE_KEYS_ENC_KE
 | `MAX_OPEN_POSITIONS` | Maximum number of open positions |
 | `MIN_CONFIDENCE` | Minimum strategy confidence needed to open a trade |
 | `TICK_INTERVAL` | Time between two ticks, in seconds. Minimum: `10` |
-| `LOG_LEVEL` | Log level (for example `info`) |
+| `LOG_LEVEL` | Log level: `error`, `warn`, `info` (default) or `debug`. Refer to [Logs](#logs). |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Email settings for user invitations (optional) |
 | `PUBLIC_APP_URL` | Base URL of the dashboard. Invitation links use this URL. |
 | `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY` | reCAPTCHA on login (optional) |
@@ -142,6 +142,19 @@ Old versions encrypted the exchange API keys with a key from `JWT_SECRET`. The s
 4. Start the server. The server encrypts the stored exchange API keys again with the new key.
 5. Look for warnings in the log.
 6. Remove `EXCHANGE_KEYS_ENC_KEY_PREVIOUS`.
+
+### Logs
+
+The server writes the log to the console and to files in the `logs/` directory.
+
+- `combined-<date>.log` contains all messages at `LOG_LEVEL` and higher.
+- `error-<date>.log` contains only errors.
+- The server starts a new file each day. It also starts a new file when the file is 50 MB (20 MB for the error log).
+- The server keeps the 20 newest files of each log and removes older files. Thus the combined log uses a maximum of 1 GB of disk space.
+
+At `info`, each tick of a bot writes one line. The line shows the user, the number of assets, signals and orders, the number of errors and the duration. An API request that fails with a 4xx status writes a warning. An API request that fails with a 5xx status writes an error.
+
+Set `LOG_LEVEL=debug` to also see each candle fetch, each strategy signal and each successful API request.
 
 ## Running with Docker
 

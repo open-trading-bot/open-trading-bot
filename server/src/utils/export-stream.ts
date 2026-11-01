@@ -7,6 +7,7 @@ export const EXPORT_FLUSH_BYTES = 64 * 1024;
 type StreamTarget = Pick<Response, 'write' | 'end' | 'once' | 'removeListener' | 'destroy'> & {
   destroyed?: boolean;
   writableEnded?: boolean;
+  headersSent?: boolean;
 };
 
 function clientGone(res: StreamTarget): boolean {
@@ -50,6 +51,8 @@ export async function streamPieces(res: StreamTarget, pieces: Iterable<string>):
     if (clientGone(res)) return;
     res.end(buffer);
   } catch (err) {
+    // Before the first byte, the normal error handler can still send a status.
+    if (!res.headersSent) throw err;
     logger.error(`[export] stream failed: ${(err as Error)?.stack ?? err}`);
     res.destroy(err as Error);
   }
