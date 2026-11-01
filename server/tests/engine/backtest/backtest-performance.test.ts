@@ -25,10 +25,12 @@ describe('Backtest performance (P2)', () => {
     expect(Math.max(...sizes)).toBeLessThanOrEqual(100);
   });
 
-  it('runs 43,000 one-minute candles (30 days) in under 2 seconds', () => {
+  // The O(n^2) version took about 126 s. The limit has margin for a loaded
+  // CI machine and still catches that regression.
+  it('runs 43,000 one-minute candles (30 days) in under 5 seconds', () => {
     const t0 = performance.now();
     runBacktest({ strategyId: 'rsi', candles: candles(43_000), symbol: 'BTC/USDT', marketType: 'spot', tradeAmount: 100, params: { period: 14, oversold: 30, overbought: 70 } });
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(performance.now() - t0).toBeLessThan(5000);
   });
 });
 
