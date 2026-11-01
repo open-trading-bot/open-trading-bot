@@ -18,6 +18,17 @@ export interface EnvConfig {
   publicAppUrl: string;
 }
 
+// The example env files are public. A server that runs with their values
+// gives anyone admin access, token forgery, and the exchange-key encryption key.
+function assertStrongSecret(name: string, value: string, minLength: number): void {
+  if (/change[-_]?me/i.test(value)) {
+    throw new Error(`${name} still has the placeholder value from the example env file. Set a random value.`);
+  }
+  if (value.length < minLength) {
+    throw new Error(`${name} must have at least ${minLength} characters.`);
+  }
+}
+
 export function loadEnv(): EnvConfig {
   const apiKey = process.env.API_KEY;
   const jwtSecret = process.env.JWT_SECRET;
@@ -26,6 +37,9 @@ export function loadEnv(): EnvConfig {
   if (!apiKey || !jwtSecret || !adminPass) {
     throw new Error(ERROR_MSG.MISSING_ENV_VARS);
   }
+  assertStrongSecret('API_KEY', apiKey, 32);
+  assertStrongSecret('JWT_SECRET', jwtSecret, 32);
+  assertStrongSecret('ADMIN_PASS', adminPass, 12);
 
   return {
     port: Number(process.env.PORT) || DEFAULTS.PORT,

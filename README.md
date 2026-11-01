@@ -71,6 +71,12 @@ The server does not start without `API_KEY`, `JWT_SECRET` and `ADMIN_PASS`.
 
 Use long random values for the secrets. Example: `openssl rand -hex 32`.
 
+The server checks the secrets when it starts. It does not start in these conditions:
+
+- A secret still contains `change-me` from the example env file.
+- `API_KEY` or `JWT_SECRET` has fewer than 32 characters.
+- `ADMIN_PASS` has fewer than 12 characters.
+
 ## Running with Docker
 
 ```bash
