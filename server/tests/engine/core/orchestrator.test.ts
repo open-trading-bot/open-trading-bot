@@ -95,7 +95,7 @@ describe('Orchestrator', () => {
     expect(seen).toEqual(new Set(['BTC/USDT|15m', 'BTC/USDT|1h']));
   });
 
-  it('broadcasts signal:generated during tick', async () => {
+  it('broadcasts the tick signals in one signals:batch event', async () => {
     const exchange = mockExchange();
     const db = mockDb();
     const ws = mockBroadcaster();
@@ -104,12 +104,12 @@ describe('Orchestrator', () => {
     await orch.tick();
     orch.stop();
     const signalCalls = (ws.broadcast as any).mock.calls.filter(
-      (call: any[]) => call[0]?.type === 'signal:generated'
+      (call: any[]) => call[0]?.type === 'signals:batch'
     );
-    expect(signalCalls.length).toBeGreaterThan(0);
-    expect(signalCalls[0][0].data).toHaveProperty('symbol');
-    expect(signalCalls[0][0].data).toHaveProperty('action');
-    expect(signalCalls[0][0].data).toHaveProperty('confidence');
+    expect(signalCalls.length).toBe(1);
+    expect(signalCalls[0][0].data[0]).toHaveProperty('symbol');
+    expect(signalCalls[0][0].data[0]).toHaveProperty('action');
+    expect(signalCalls[0][0].data[0]).toHaveProperty('confidence');
   });
 
   it('broadcasts tick:complete after tick', async () => {

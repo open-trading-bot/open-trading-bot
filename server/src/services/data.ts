@@ -90,7 +90,7 @@ export function createDataService(db: Db, botManager: BotManager): DataService {
     },
 
     async getPortfolioBalance(userId: number) {
-      const exchange = botManager.getExchange(userId);
+      const exchange = botManager.getReadExchange(userId);
       const balance = await exchange.fetchBalance();
       return {
         totalBalance: balance.total,
@@ -117,7 +117,7 @@ export function createDataService(db: Db, botManager: BotManager): DataService {
     },
 
     async fetchSymbols(userId: number) {
-      const exchange = botManager.getExchange(userId);
+      const exchange = botManager.getReadExchange(userId);
       return exchange.fetchSymbols();
     },
 

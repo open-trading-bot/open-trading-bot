@@ -1,21 +1,26 @@
 // client/src/App.tsx
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { Positions } from './pages/Positions';
-import { Trades } from './pages/Trades';
-import { Strategies } from './pages/Strategies';
-import { Settings } from './pages/Settings';
-import { Backtest } from './pages/Backtest';
-import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
-import { AcceptInvite } from './pages/AcceptInvite';
 import { AcceptDisclaimer } from './pages/AcceptDisclaimer';
 import { NotFound } from './pages/NotFound';
-import { Terms } from './pages/Terms';
-import { Privacy } from './pages/Privacy';
-import { TestnetHelp } from './pages/TestnetHelp';
 import { useAuthStore } from 'common';
+import { PageFallback } from './components/PageFallback';
+
+// Pages other than the login and dashboard load on first visit. Backtest
+// alone pulls in the chart library.
+const Positions = lazy(() => import('./pages/Positions').then((m) => ({ default: m.Positions })));
+const Trades = lazy(() => import('./pages/Trades').then((m) => ({ default: m.Trades })));
+const Strategies = lazy(() => import('./pages/Strategies').then((m) => ({ default: m.Strategies })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const Backtest = lazy(() => import('./pages/Backtest').then((m) => ({ default: m.Backtest })));
+const Reports = lazy(() => import('./pages/Reports').then((m) => ({ default: m.Reports })));
+const AcceptInvite = lazy(() => import('./pages/AcceptInvite').then((m) => ({ default: m.AcceptInvite })));
+const Terms = lazy(() => import('./pages/Terms').then((m) => ({ default: m.Terms })));
+const Privacy = lazy(() => import('./pages/Privacy').then((m) => ({ default: m.Privacy })));
+const TestnetHelp = lazy(() => import('./pages/TestnetHelp').then((m) => ({ default: m.TestnetHelp })));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, disclaimerAccepted } = useAuthStore();
@@ -34,6 +39,7 @@ function DisclaimerRoute() {
 function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
@@ -53,6 +59,7 @@ function App() {
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

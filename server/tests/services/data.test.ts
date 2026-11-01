@@ -19,16 +19,18 @@ function mockDb(): Db {
 }
 
 function mockBotManager(): BotManager {
-  return {
+  const manager = {
     getExchange: vi.fn().mockReturnValue({
       fetchBalance: vi.fn().mockResolvedValue({ total: 10000, free: 8500, totalEquity: 10500 }),
     }),
+    getReadExchange: vi.fn((id: number) => manager.getExchange(id)),
     getConfig: vi.fn().mockReturnValue({
       mode: 'paper',
       strategies: [],
       assets: [],
     }),
   } as any;
+  return manager;
 }
 
 describe('DataService.getPortfolioBalance', () => {

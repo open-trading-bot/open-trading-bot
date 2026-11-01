@@ -106,13 +106,13 @@ The server does not start without `API_KEY`, `JWT_SECRET`, `EXCHANGE_KEYS_ENC_KE
 | `MAX_OPEN_POSITIONS` | Maximum number of open positions |
 | `MIN_CONFIDENCE` | Minimum strategy confidence needed to open a trade |
 | `TICK_INTERVAL` | Time between two ticks, in seconds. Minimum: `10` |
-| `LOG_LEVEL` | Log level (for example `info`) |
+| `LOG_LEVEL` | Log level: `error`, `warn`, `info` (default) or `debug`. Refer to [Logs](#logs). |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Email settings for user invitations (optional) |
 | `PUBLIC_APP_URL` | Base URL of the dashboard. Invitation links use this URL. When you set it, the reCAPTCHA response must show the same host name. |
 | `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY` | reCAPTCHA keys for the interest form on the login page. Mandatory when `NODE_ENV` is `production`. |
 | `NODE_ENV` | Set `production` on a public server. Then the interest form refuses submissions without `RECAPTCHA_SECRET_KEY`. The Docker images set `production`. |
 | `TRUST_PROXY` | Proxies that can set the client IP (Express `trust proxy`). Default: private networks only. Set it when a proxy outside your network is in front of the server. |
-| `BACKOFFICE_ALLOWED_IPS` | IP addresses and CIDR ranges that can use `/api/backoffice` (optional). Separate the values with spaces. Other addresses get HTTP 403. The server does not start with a value that is not valid. |
+| `BACKOFFICE_ALLOWED_IPS` | IP addresses and CIDR ranges that can use `/api/backoffice` (optional). Separate the values with spaces. Other addresses receive HTTP 403. The server does not start with a value that is not valid. |
 | `DOMAIN`, `BACKOFFICE_DOMAIN` | Docker only. Host names of the dashboard and the backoffice. Default: `localhost` and `admin.localhost`. |
 | `GIT_COMMIT_SHA` | Build version that the UI shows (optional) |
 
@@ -146,9 +146,22 @@ Old versions encrypted the exchange API keys with a key from `JWT_SECRET`. The s
 5. Look for warnings in the log.
 6. Remove `EXCHANGE_KEYS_ENC_KEY_PREVIOUS`.
 
+### Logs
+
+The server writes the log to the console and to files in the `logs/` directory.
+
+- `combined-<date>.log` contains all messages at `LOG_LEVEL` and higher.
+- `error-<date>.log` contains only errors.
+- The server starts a new file each day. It also starts a new file when the file is 50 MB (20 MB for the error log).
+- The server keeps the 20 newest files of each log and removes older files. Thus the combined log uses a maximum of 1 GB of disk space.
+
+At `info`, each tick of a bot writes one line. The line shows the user, the number of assets, signals and orders, the number of errors and the duration. An API request that fails with a 4xx status writes a warning. An API request that fails with a 5xx status writes an error.
+
+Set `LOG_LEVEL=debug` to also see each candle fetch, each strategy signal and each successful API request.
+
 ## Running with Docker
 
-The Docker setup has a [Caddy](https://caddyserver.com) container in front of the apps. Caddy gets and renews the TLS certificates automatically. Only Caddy publishes ports: `80` and `443`. Port `80` sends all requests to HTTPS.
+The Docker setup has a [Caddy](https://caddyserver.com) container in front of the apps. Caddy requests and renews the TLS certificates automatically. Only Caddy publishes ports: `80` and `443`. Port `80` sends all requests to HTTPS.
 
 ### Run on a public server
 
@@ -191,7 +204,7 @@ The old setup published the dashboard on port `80` and the backoffice on port `8
 4. Give the data volumes to the `node` user: `docker compose run --rm --user root server chown -R node:node /app/data /app/logs`
 5. Run `docker compose up -d`.
 
-The WebSocket now gets the login token in the first message, not in the URL. Users must reload the dashboard after the upgrade.
+The WebSocket now receives the login token in the first message, not in the URL. Users must reload the dashboard after the upgrade.
 
 ## Tests
 

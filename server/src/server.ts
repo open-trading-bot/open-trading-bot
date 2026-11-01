@@ -59,8 +59,17 @@ export function createApp(apiKey: string, jwtSecret: string, getUser: (id: numbe
   }));
   app.use(cors());
   app.use(express.json());
-  app.use((req, _res, next) => {
-    logger.info(`[api] ${req.method} ${req.path}`);
+  // One line per request after the response. Success goes to debug to keep
+  // the log small; client errors go to warn and server errors go to error.
+  app.use((req, res, next) => {
+    const started = Date.now();
+    const { method, path: reqPath } = req;
+    res.on('finish', () => {
+      const line = `[api] ${method} ${reqPath} ${res.statusCode} ${Date.now() - started}ms`;
+      if (res.statusCode >= 500) logger.error(line);
+      else if (res.statusCode >= 400) logger.warn(line);
+      else logger.debug(line);
+    });
     next();
   });
   // Runs before auth, so a blocked address gets 403 also with a valid token.

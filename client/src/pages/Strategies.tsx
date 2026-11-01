@@ -1,6 +1,7 @@
 // client/src/pages/Strategies.tsx
 import { useEffect } from 'react';
 import { getStrategies, toggleStrategy } from '../lib/api';
+import { useShallow } from 'zustand/react/shallow';
 import { useBotStore } from '../stores/bot';
 import { useLanguageStore } from 'common';
 
@@ -15,7 +16,7 @@ const STRATEGY_COLORS: Record<string, { bg: string; border: string; accent: stri
 const DEFAULT_COLOR = { bg: 'bg-gray-800/50', border: 'border-gray-800', accent: 'text-gray-400' };
 
 export function Strategies() {
-  const { strategies, setStrategies } = useBotStore();
+  const { strategies, setStrategies } = useBotStore(useShallow((s) => ({ strategies: s.strategies, setStrategies: s.setStrategies })));
   const { t } = useLanguageStore();
 
   useEffect(() => {

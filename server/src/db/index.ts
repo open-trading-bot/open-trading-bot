@@ -69,6 +69,9 @@ export interface TradeFilters {
   excludeZeroPnl?: boolean;
 }
 
+/** Rows read per query by the export iterators. */
+export const EXPORT_PAGE_SIZE = 500;
+
 function buildTradeFilterWhere(userId: number, filters?: TradeFilters): { where: string; params: unknown[] } {
   let where = 'WHERE user_id = ?';
   const params: unknown[] = [userId];
@@ -98,7 +101,13 @@ export interface Db {
   getDailyPnlReport(userId: number): { date: string; pnl: number; tradeCount: number; volume: number; balance: number | null }[];
   upsertDailyEquitySnapshot(userId: number, totalEquity: number): void;
   exportTrades(userId: number, filters?: TradeFilters): Trade[];
-  iterateTrades(userId: number, filters?: TradeFilters): IterableIterator<Trade>;
+  /**
+   * Yields trades newest first, read in pages of `pageSize`. No SQLite cursor
+   * stays open between pages, so the caller can await between rows and other
+   * code can use the connection meanwhile.
+   */
+  iterateTrades(userId: number, filters?: TradeFilters, pageSize?: number): IterableIterator<Trade>;
+  /** Yields open positions. Reads all rows first; a user has at most 100. */
   iteratePositions(userId: number): IterableIterator<Position>;
   getTradesBySymbol(userId: number, symbol: string): Trade[];
   getTradeDistinctSymbols(userId: number): string[];
@@ -145,6 +154,8 @@ export interface Db {
   getUsersDailyPnl(): { userId: number; dailyPnl: number }[];
   // Admin: get all trades/positions across users
   getAllTrades(limit?: number): Trade[];
+  /** Count and pnl sum over all trades, computed in SQL. A null pnl counts as 0. */
+  getTradeTotals(): { count: number; totalPnl: number };
   getAllTradesPaginated(page: number, limit: number, filters?: TradeFilters & { userId?: number }): { data: Trade[]; total: number };
   getAllTradeDistinctSymbols(): string[];
   getAllTradeDistinctStrategies(): string[];
@@ -252,6 +263,7 @@ export function createDb(filepath: string): Db {
     getAllTrades: db.prepare('SELECT * FROM trades ORDER BY timestamp DESC LIMIT ?'),
     getAllTradesPaginated: db.prepare('SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?'),
     getAllTradesCount: db.prepare('SELECT COUNT(*) as count FROM trades'),
+    getTradeTotals: db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(pnl), 0) as totalPnl FROM trades'),
     getAllTradeDistinctSymbols: db.prepare('SELECT DISTINCT symbol FROM trades ORDER BY symbol'),
     getAllTradeDistinctStrategies: db.prepare('SELECT DISTINCT strategy FROM trades ORDER BY strategy'),
     getAllOpenPositions: db.prepare('SELECT * FROM positions'),
@@ -450,18 +462,29 @@ export function createDb(filepath: string): Db {
       const { where, params } = buildTradeFilterWhere(userId, filters);
       return (db.prepare(`SELECT * FROM trades ${where} ORDER BY timestamp DESC`).all(...params) as Record<string, unknown>[]).map(mapTrade);
     },
-    iterateTrades(userId: number, filters?: TradeFilters) {
+    iterateTrades(userId: number, filters?: TradeFilters, pageSize = EXPORT_PAGE_SIZE) {
+      // Keyset paging on (timestamp, rowid). rowid breaks ties in the same
+      // order as the (user_id, timestamp) index scan of the old single query.
       const { where, params } = buildTradeFilterWhere(userId, filters);
-      const stmt = db.prepare(`SELECT * FROM trades ${where} ORDER BY timestamp DESC`);
-      const raw = stmt.iterate(...params) as IterableIterator<Record<string, unknown>>;
+      const first = db.prepare(`SELECT rowid AS _rowid, * FROM trades ${where} ORDER BY timestamp DESC, rowid DESC LIMIT ?`);
+      const next = db.prepare(
+        `SELECT rowid AS _rowid, * FROM trades ${where} AND timestamp <= ? AND (timestamp < ? OR rowid < ?) `
+        + 'ORDER BY timestamp DESC, rowid DESC LIMIT ?',
+      );
       return (function* () {
-        for (const row of raw) yield mapTrade(row);
+        let page = first.all(...params, pageSize) as Record<string, unknown>[];
+        while (page.length > 0) {
+          for (const row of page) yield mapTrade(row);
+          if (page.length < pageSize) return;
+          const last = page[page.length - 1];
+          page = next.all(...params, last.timestamp, last.timestamp, last._rowid, pageSize) as Record<string, unknown>[];
+        }
       })();
     },
     iteratePositions(userId: number) {
-      const raw = db.prepare('SELECT * FROM positions WHERE user_id = ?').iterate(userId) as IterableIterator<Record<string, unknown>>;
+      const rows = db.prepare('SELECT * FROM positions WHERE user_id = ?').all(userId) as Record<string, unknown>[];
       return (function* () {
-        for (const row of raw) yield mapPosition(row);
+        for (const row of rows) yield mapPosition(row);
       })();
     },
     getTradesBySymbol(userId: number, symbol: string) { return (stmts.getTradesBySymbol.all(userId, symbol) as Record<string, unknown>[]).map(mapTrade); },
@@ -608,6 +631,7 @@ export function createDb(filepath: string): Db {
         GROUP BY user_id
       `).all(start.getTime(), end.getTime()) as { userId: number; dailyPnl: number }[];
     },
+    getTradeTotals() { return stmts.getTradeTotals.get() as { count: number; totalPnl: number }; },
     getAllTrades(limit = 100) { return (stmts.getAllTrades.all(limit) as Record<string, unknown>[]).map(mapTrade); },
     getAllTradesPaginated(page: number, limit: number, filters?: TradeFilters & { userId?: number }) {
       let where = 'WHERE 1=1';

@@ -10,7 +10,8 @@ import { createBinanceAdapter } from '../exchange/binance.js';
 import { createRateLimiter, getClientIp } from '../utils/rate-limiter.js';
 import { parseConfigUpdate } from '../utils/config-schema.js';
 import { csvHeader, csvRow, csvAttachmentFilename } from '../utils/csv.js';
-import { buildTextTable, textAttachmentFilename } from '../utils/text.js';
+import { textTableWidths, textTableWidthsAsync, textTablePieces, textAttachmentFilename } from '../utils/text.js';
+import { streamPieces, jsonArrayPieces } from '../utils/export-stream.js';
 import logger from '../utils/logger.js';
 
 const verifyLimiter = createRateLimiter(RATE_LIMITS.VERIFY_EXCHANGE);
@@ -21,6 +22,23 @@ function createExchangeAdapter(name: string, config: { apiKey: string; secret: s
     case 'binance': return createBinanceAdapter(config);
     default: return createBybitAdapter(config);
   }
+}
+
+const EXPORT_FILTER_KEYS = ['symbol', 'side', 'strategy', 'mode', 'pnl', 'testnet', 'exchange'] as const;
+
+function exportFilters(req: Request): Record<string, any> | undefined {
+  const filters: Record<string, any> = {};
+  for (const key of EXPORT_FILTER_KEYS) {
+    const val = req.query[key];
+    if (typeof val === 'string' && val) filters[key] = val;
+  }
+  if (req.query.excludeZeroPnl === 'true') filters.excludeZeroPnl = true;
+  return Object.keys(filters).length > 0 ? filters : undefined;
+}
+
+function* csvPieces(rows: Iterable<object>, columns: readonly string[]): Generator<string> {
+  yield csvHeader(columns) + '\n';
+  for (const row of rows) yield csvRow(row, columns) + '\n';
 }
 
 type ValidationError = { status: number; error: string };
@@ -134,65 +152,46 @@ export function createDataController(dataService: DataService, db: Db, keyCipher
       const sort = sortBy ? { by: sortBy, dir: sortDir } : undefined;
       res.json(dataService.getTradesPaginated(userId, page, limit, Object.keys(filters).length > 0 ? filters : undefined, sort));
     },
-    exportTrades(req: Request, res: Response) {
+    // Exports stream: trades are read from the DB in pages and written in
+    // chunks that wait for 'drain'. Open positions are at most 100 per user,
+    // so they are read in one query and written the same way.
+    async exportTrades(req: Request, res: Response) {
       const userId = (req as any).user.id;
-      const filters: Record<string, any> = {};
-      for (const key of ['symbol', 'side', 'strategy', 'mode', 'pnl', 'testnet', 'exchange']) {
-        const val = req.query[key];
-        if (typeof val === 'string' && val) filters[key] = val;
-      }
-      if (req.query.excludeZeroPnl === 'true') filters.excludeZeroPnl = true;
-      res.json(dataService.exportTrades(userId, Object.keys(filters).length > 0 ? filters : undefined));
+      res.setHeader('Content-Type', EXPORT.JSON_CONTENT_TYPE);
+      await streamPieces(res, jsonArrayPieces(dataService.iterateTrades(userId, exportFilters(req))));
     },
-    exportPositions(req: Request, res: Response) {
+    async exportPositions(req: Request, res: Response) {
       const userId = (req as any).user.id;
-      res.json(dataService.exportPositions(userId));
+      res.setHeader('Content-Type', EXPORT.JSON_CONTENT_TYPE);
+      await streamPieces(res, jsonArrayPieces(dataService.exportPositions(userId)));
     },
-    exportTradesCsv(req: Request, res: Response) {
+    async exportTradesCsv(req: Request, res: Response) {
       const userId = (req as any).user.id;
-      const filters: Record<string, any> = {};
-      for (const key of ['symbol', 'side', 'strategy', 'mode', 'pnl', 'testnet', 'exchange']) {
-        const val = req.query[key];
-        if (typeof val === 'string' && val) filters[key] = val;
-      }
-      if (req.query.excludeZeroPnl === 'true') filters.excludeZeroPnl = true;
       res.setHeader('Content-Type', EXPORT.CSV_CONTENT_TYPE);
       res.setHeader('Content-Disposition', `attachment; filename="${csvAttachmentFilename(EXPORT.TRADES_FILENAME_PREFIX)}"`);
-      res.write(csvHeader(EXPORT.TRADE_COLUMNS) + '\n');
-      for (const trade of dataService.iterateTrades(userId, Object.keys(filters).length > 0 ? filters : undefined)) {
-        res.write(csvRow(trade, EXPORT.TRADE_COLUMNS) + '\n');
-      }
-      res.end();
+      await streamPieces(res, csvPieces(dataService.iterateTrades(userId, exportFilters(req)), EXPORT.TRADE_COLUMNS));
     },
-    exportPositionsCsv(req: Request, res: Response) {
+    async exportPositionsCsv(req: Request, res: Response) {
       const userId = (req as any).user.id;
       res.setHeader('Content-Type', EXPORT.CSV_CONTENT_TYPE);
       res.setHeader('Content-Disposition', `attachment; filename="${csvAttachmentFilename(EXPORT.POSITIONS_FILENAME_PREFIX)}"`);
-      res.write(csvHeader(EXPORT.POSITION_COLUMNS) + '\n');
-      for (const pos of dataService.iteratePositions(userId)) {
-        res.write(csvRow(pos, EXPORT.POSITION_COLUMNS) + '\n');
-      }
-      res.end();
+      await streamPieces(res, csvPieces(dataService.iteratePositions(userId), EXPORT.POSITION_COLUMNS));
     },
-    exportTradesTxt(req: Request, res: Response) {
+    async exportTradesTxt(req: Request, res: Response) {
       const userId = (req as any).user.id;
-      const filters: Record<string, any> = {};
-      for (const key of ['symbol', 'side', 'strategy', 'mode', 'pnl', 'testnet', 'exchange']) {
-        const val = req.query[key];
-        if (typeof val === 'string' && val) filters[key] = val;
-      }
-      if (req.query.excludeZeroPnl === 'true') filters.excludeZeroPnl = true;
-      const rows = dataService.exportTrades(userId, Object.keys(filters).length > 0 ? filters : undefined);
+      const filters = exportFilters(req);
+      // Pass 1 reads only the column widths. Pass 2 renders the rows.
+      const widths = await textTableWidthsAsync(dataService.iterateTrades(userId, filters), EXPORT.TRADE_COLUMNS);
       res.setHeader('Content-Type', EXPORT.TEXT_CONTENT_TYPE);
       res.setHeader('Content-Disposition', `attachment; filename="${textAttachmentFilename(EXPORT.TRADES_FILENAME_PREFIX)}"`);
-      res.send(buildTextTable(rows, EXPORT.TRADE_COLUMNS));
+      await streamPieces(res, textTablePieces(dataService.iterateTrades(userId, filters), EXPORT.TRADE_COLUMNS, widths));
     },
-    exportPositionsTxt(req: Request, res: Response) {
+    async exportPositionsTxt(req: Request, res: Response) {
       const userId = (req as any).user.id;
       const rows = dataService.exportPositions(userId);
       res.setHeader('Content-Type', EXPORT.TEXT_CONTENT_TYPE);
       res.setHeader('Content-Disposition', `attachment; filename="${textAttachmentFilename(EXPORT.POSITIONS_FILENAME_PREFIX)}"`);
-      res.send(buildTextTable(rows, EXPORT.POSITION_COLUMNS));
+      await streamPieces(res, textTablePieces(rows, EXPORT.POSITION_COLUMNS, textTableWidths(rows, EXPORT.POSITION_COLUMNS)));
     },
     getPortfolio(req: Request, res: Response) {
       const userId = (req as any).user.id;

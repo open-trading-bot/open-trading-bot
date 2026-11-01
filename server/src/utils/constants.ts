@@ -86,6 +86,8 @@ export const ERROR_MSG = {
 export const WS_EVENTS = {
   BOT_STATUS: 'bot:status',
   SIGNAL_GENERATED: 'signal:generated',
+  // All signals of one tick in one message. Replaces SIGNAL_GENERATED.
+  SIGNALS_BATCH: 'signals:batch',
   TRADE_EXECUTED: 'trade:executed',
   POSITION_UPDATE: 'position:update',
   TICK_COMPLETE: 'tick:complete',
@@ -208,6 +210,7 @@ export const CCXT_ORDER_STATUS = {
 
 // Export (JSON / CSV / TXT)
 export const EXPORT = {
+  JSON_CONTENT_TYPE: 'application/json; charset=utf-8',
   CSV_CONTENT_TYPE: 'text/csv; charset=utf-8',
   TEXT_CONTENT_TYPE: 'text/plain; charset=utf-8',
   TRADES_FILENAME_PREFIX: 'trades',
