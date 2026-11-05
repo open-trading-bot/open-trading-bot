@@ -1,5 +1,8 @@
 # open-trading-bot
 
+[![CI](https://github.com/open-trading-bot/open-trading-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/open-trading-bot/open-trading-bot/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 An algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It has a dashboard for users and a backoffice for admins.
 
 > **Disclaimer:** Use this software only for education and research. It is **not financial advice**.
@@ -221,11 +224,11 @@ This command runs two test suites:
 
 ## Contributing
 
-Contributions are welcome.
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
 
 - To ask a question, use [Q&A in Discussions](https://github.com/open-trading-bot/open-trading-bot/discussions/categories/q-a).
+- To find a small task, look at the [good first issues](https://github.com/open-trading-bot/open-trading-bot/labels/good%20first%20issue).
 - Before you start a large change, open an issue to discuss it.
-- Keep pull requests small.
 
 ## Security
 

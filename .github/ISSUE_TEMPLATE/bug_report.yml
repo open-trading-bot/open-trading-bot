@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a problem in the bot, the dashboard or the backoffice.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not put API keys, secrets or account details in this issue.
+        To report a security vulnerability, read SECURITY.md. Do not open a public issue.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Write what you saw and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start the bot in paper mode.
+        2. Open the dashboard.
+        3. See the error.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Trading mode
+      options:
+        - Paper mode
+        - Testnet
+        - Live mode
+        - Not related to trading
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or a commit hash
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Node.js 22 on macOS, or Docker on Ubuntu
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Remove all secrets and account details before you paste the logs.
+      render: text
