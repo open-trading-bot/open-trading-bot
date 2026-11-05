@@ -17,6 +17,8 @@ Requirements: Node.js 22 or later, npm.
 git clone https://github.com/open-trading-bot/open-trading-bot.git
 cd open-trading-bot
 npm install --legacy-peer-deps
+# npm 12 skips install scripts. This command installs the database driver if it is missing.
+test -f node_modules/better-sqlite3/build/Release/better_sqlite3.node || (cd node_modules/better-sqlite3 && npx prebuild-install)
 cp server/.env.example server/.env   # then edit the values
 npm run dev
 ```

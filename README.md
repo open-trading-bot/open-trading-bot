@@ -1,9 +1,14 @@
 # open-trading-bot
 
 [![CI](https://github.com/open-trading-bot/open-trading-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/open-trading-bot/open-trading-bot/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/open-trading-bot/open-trading-bot)](https://github.com/open-trading-bot/open-trading-bot/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 An algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It has a dashboard for users and a backoffice for admins.
+
+Test a strategy on historical data, with fees and slippage. Then run it in paper mode or on the Bybit testnet, with your risk limits.
+
+**[Quick start](#quick-start-local)** · [Run with Docker](#running-with-docker) · [Q&A](https://github.com/open-trading-bot/open-trading-bot/discussions/categories/q-a) · [Contributing](CONTRIBUTING.md)
 
 > **Disclaimer:** Use this software only for education and research. It is **not financial advice**.
 > Crypto trading has a high risk of loss. You use this software at your own risk.
@@ -14,9 +19,13 @@ An algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It has a d
 - **Trading engine:** runs the strategies at a fixed interval (one "tick"). Strategies: MA crossover, RSI, MACD, Bollinger Bands, Wyckoff. A trade opens only above a minimum confidence. Strategies use closed candles only. The bot ignores the candle that is still open, so a signal does not change inside one candle. Backtests use the same rule.
 - **Risk management:** stop loss, daily loss limit, maximum open positions, kill switch
 - **Paper mode and live mode.** The bot can also use the Bybit testnet.
-- **Backtests** on historical market data, with fees and slippage. The strategies and the backtester are in the package [`@open-trading-bot/strategies`](https://github.com/open-trading-bot/strategies). You can use the package without the bot.
+- **Backtests** on historical market data, with fees and slippage
 - **Dashboard:** positions, strategies, backtests
 - **Backoffice:** users, roles, invitations, feature flags
+
+## Packages
+
+- [`@open-trading-bot/strategies`](https://github.com/open-trading-bot/strategies): the strategies and the backtester. It needs no server, database or exchange keys.
 
 ## Project structure
 
@@ -37,6 +46,8 @@ Requirements: Node.js 22 or later, npm.
 git clone https://github.com/open-trading-bot/open-trading-bot.git
 cd open-trading-bot
 npm install --legacy-peer-deps
+# npm 12 skips install scripts. This command installs the database driver if it is missing.
+test -f node_modules/better-sqlite3/build/Release/better_sqlite3.node || (cd node_modules/better-sqlite3 && npx prebuild-install)
 cp server/.env.example server/.env   # then edit the values
 npm run dev
 ```
