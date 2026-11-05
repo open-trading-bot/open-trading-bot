@@ -1,4 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// The paper adapter gets prices from the real adapter. Tests must not use the network.
+vi.mock('../../src/exchange/bybit.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/exchange/bybit.js')>();
+  return {
+    ...actual,
+    createBybitAdapter: (config: Parameters<typeof actual.createBybitAdapter>[0]) => ({
+      ...actual.createBybitAdapter(config),
+      fetchTicker: vi.fn().mockResolvedValue({
+        symbol: 'BTC/USDT', last: 50000, bid: 50000, ask: 50000, volume24h: 0, timestamp: 1,
+      }),
+    }),
+  };
+});
+
 import { createBotManager } from '../../src/engine/bot-manager.js';
 import { createBotConfig } from '../../src/config/index.js';
 import { createDb, type Db } from '../../src/db/index.js';
@@ -399,9 +414,6 @@ describe('BotManager — paper cash persistence across adapter recreation', () =
     const exchangeA = managerA.getExchange(user.id);
     expect(exchangeA.name).toMatch(/^paper\(/);
 
-    (exchangeA as any).fetchTicker = vi.fn().mockResolvedValue({
-      symbol: 'BTC/USDT', last: 50000, bid: 50000, ask: 50000, volume24h: 0, timestamp: Date.now(),
-    });
     await exchangeA.placeOrder({ symbol: 'BTC/USDT', side: 'buy', amount: 200, price: 50000, type: 'market', marketType: 'spot' });
 
     const balA = await exchangeA.fetchBalance();
