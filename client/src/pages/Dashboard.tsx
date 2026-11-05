@@ -550,14 +550,14 @@ export function Dashboard() {
                               />
                             </div>
                             <span
-                              className="font-mono"
+                              className={`font-mono ${s.confidence >= HIGH_CONFIDENCE ? 'signal-badge-green' : s.confidence >= MEDIUM_CONFIDENCE ? 'signal-confidence-medium' : 'signal-badge-gray'}`}
                               style={{
                                 color:
                                   s.confidence >= HIGH_CONFIDENCE
                                     ? '#4ade80'
                                     : s.confidence >= MEDIUM_CONFIDENCE
                                       ? '#fbbf24'
-                                      : '#6b7280',
+                                      : '#8f99a8',
                               }}
                             >
                               {confPct}%

@@ -47,6 +47,7 @@
 .light .signal-badge-green { color: #166534 !important; }
 .light .signal-badge-red { color: #b91c1c !important; }
 .light .signal-badge-gray { color: #475569 !important; }
+.light .signal-confidence-medium { color: #854d0e !important; }
 /* Colored text with a contrast of at least 4.5:1 on the light backgrounds. */
 .light .text-red-200\/80,
 .light .text-red-300,
