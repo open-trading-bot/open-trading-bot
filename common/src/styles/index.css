@@ -37,10 +37,12 @@
 .light .text-gray-100 { color: #1e293b !important; }
 .light .text-gray-200 { color: #334155 !important; }
 .light .text-gray-300 { color: #475569 !important; }
-.light .text-gray-400 { color: #64748b !important; }
-.light .text-gray-500 { color: #94a3b8 !important; }
-.light .text-gray-600 { color: #94a3b8 !important; }
+.light .text-gray-400 { color: #566479 !important; }
+.light .text-gray-500 { color: #5b6b82 !important; }
+.light .text-gray-600 { color: #5b6b82 !important; }
 .light .text-gray-700 { color: #cbd5e1 !important; }
+.light p.text-gray-700 { color: #5b6b82 !important; }
+.light .placeholder-gray-600::placeholder { color: #5b6b82 !important; }
 .light .hover\:text-gray-200:hover { color: #1e293b !important; }
 .light .hover\:text-gray-300:hover { color: #334155 !important; }
 .light .hover\:text-white:hover { color: #0f172a !important; }
@@ -54,6 +56,17 @@
   color: #1e293b !important;
 }
 .light select option { background-color: #ffffff; color: #1e293b; }
+
+/*
+ * Dark mode text colors with a contrast of at least 4.5:1 on the gray-950 to gray-800 backgrounds.
+ * These rules stay in the utilities layer, so hover colors continue to apply.
+ */
+@layer utilities {
+  .text-gray-500, .text-gray-600, p.text-gray-700 { color: #8f99a8; }
+  .placeholder-gray-600::placeholder { color: #8f99a8; }
+  .text-red-400\/50, .text-red-400\/60 { color: #e8848b; }
+  .text-green-400\/60 { color: #4fce8f; }
+}
 
 /* Animations */
 @keyframes float {
