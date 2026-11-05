@@ -1,22 +1,15 @@
+import type { MarketType, Signal, StrategyParams } from '@open-trading-bot/strategies';
+
+export type { Candle, MarketType, Signal, SignalAction, StrategyParams } from '@open-trading-bot/strategies';
+
 // === Enums ===
 
 export type BotMode = 'live' | 'paper';
 export type BotStatus = 'running' | 'paused' | 'stopped';
 export type Side = 'buy' | 'sell';
-export type SignalAction = 'buy' | 'sell' | 'hold';
-export type MarketType = 'spot' | 'futures';
 export type OrderType = 'limit' | 'market';
 
 // === Market Data ===
-
-export interface Candle {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
 
 export interface Ticker {
   symbol: string;
@@ -28,16 +21,6 @@ export interface Ticker {
 }
 
 // === Trading ===
-
-export interface Signal {
-  action: SignalAction;
-  symbol: string;
-  strategy: string;
-  confidence: number; // 0-1
-  price: number;
-  timestamp: number;
-  marketType: MarketType;
-}
 
 export type CloseReason =
   | 'bot'
@@ -89,10 +72,6 @@ export interface Position {
 }
 
 // === Strategy ===
-
-export interface StrategyParams {
-  [key: string]: number | string | boolean;
-}
 
 export interface StrategyConfig {
   id: string;

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createOrchestrator } from '../../../src/engine/core/orchestrator.js';
 import { createPaperAdapter } from '../../../src/exchange/paper.js';
-import { strategies } from '../../../src/engine/strategies/index.js';
-import type { Strategy } from '../../../src/engine/strategies/types.js';
+import { strategies } from '@open-trading-bot/strategies';
+import type { Strategy } from '@open-trading-bot/strategies';
 import type { ExchangeAdapter } from '../../../src/exchange/types.js';
 import type { Db } from '../../../src/db/index.js';
 import type { WsBroadcaster } from '../../../src/websocket/index.js';

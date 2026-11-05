@@ -3,7 +3,7 @@ import type { ExchangeAdapter } from '../../exchange/types.js';
 import type { Db } from '../../db/index.js';
 import type { WsBroadcaster } from '../../websocket/index.js';
 import type { BotConfig, BotStatus, CloseReason, Position, Signal, Trade } from '../../types/index.js';
-import { getStrategy } from '../strategies/index.js';
+import { getStrategy } from '@open-trading-bot/strategies';
 import { createRiskManager, type RiskManager } from '../risk/index.js';
 import logger from '../../utils/logger.js';
 import { closedCandlesOnly } from '../../utils/candles.js';

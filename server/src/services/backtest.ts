@@ -3,8 +3,8 @@ import type { BotManager } from '../engine/bot-manager.js';
 import type { MarketType } from '../types/index.js';
 import { DEFAULTS, ERROR_MSG } from '../utils/constants.js';
 import { PublicError } from '../utils/errors.js';
-import { runBacktest as executeBacktest, type BacktestResult } from '../engine/backtest/index.js';
-import { getStrategy } from '../engine/strategies/index.js';
+import { runBacktest as executeBacktest, type BacktestResult } from '@open-trading-bot/strategies';
+import { getStrategy } from '@open-trading-bot/strategies';
 import { closedCandlesOnly, intervalToMs } from '../utils/candles.js';
 
 export interface BacktestService {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { reconcileStrategies, createBotConfig } from '../../src/config/index.js';
-import { getAllStrategies } from '../../src/engine/strategies/index.js';
+import { getAllStrategies } from '@open-trading-bot/strategies';
 import type { BotConfig } from '../../src/types/index.js';
 
 const registryIds = getAllStrategies().map((s) => s.id);

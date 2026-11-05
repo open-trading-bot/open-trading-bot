@@ -18,7 +18,7 @@ import type { BotConfig, Signal, MarketType, Candle } from '../../../src/types/i
 // asset reliably produces a high-confidence buy signal regardless of candle
 // shape. This keeps the test focused on the balance-reuse bug, not on
 // whether ma_crossover happens to emit a crossover against mock data.
-vi.mock('../../../src/engine/strategies/index.js', () => {
+vi.mock('@open-trading-bot/strategies', () => {
   const alwaysBuy = {
     id: 'always_buy',
     name: 'Always Buy (test)',
