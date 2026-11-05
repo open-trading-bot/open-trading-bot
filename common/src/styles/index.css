@@ -43,6 +43,35 @@
 .light .text-gray-700 { color: #cbd5e1 !important; }
 .light p.text-gray-700 { color: #5b6b82 !important; }
 .light .placeholder-gray-600::placeholder { color: #5b6b82 !important; }
+/* Colored text with a contrast of at least 4.5:1 on the light backgrounds. */
+.light .text-red-200\/80,
+.light .text-red-300,
+.light .text-red-300\/80,
+.light .text-red-400,
+.light .text-red-400\/50,
+.light .text-red-400\/60,
+.light .text-red-400\/70 { color: #b91c1c !important; }
+.light .text-green-400,
+.light .text-green-400\/50,
+.light .text-green-400\/60,
+.light .text-green-400\/70,
+.light .text-emerald-400 { color: #15803d !important; }
+.light .text-blue-200\/80,
+.light .text-blue-300,
+.light .text-blue-300\/90,
+.light .text-blue-400,
+.light .text-blue-400\/70 { color: #1d4ed8 !important; }
+.light .text-yellow-300,
+.light .text-yellow-400,
+.light .text-yellow-400\/70,
+.light .text-yellow-500 { color: #854d0e !important; }
+.light .text-amber-400 { color: #92400e !important; }
+.light .text-orange-200\/80,
+.light .text-orange-300,
+.light .text-orange-400 { color: #9a3412 !important; }
+.light .text-purple-400 { color: #7e22ce !important; }
+.light .text-cyan-400 { color: #0e7490 !important; }
+.light .hover\:text-yellow-200:hover { color: #713f12 !important; }
 .light .hover\:text-gray-200:hover { color: #1e293b !important; }
 .light .hover\:text-gray-300:hover { color: #334155 !important; }
 .light .hover\:text-white:hover { color: #0f172a !important; }
@@ -64,8 +93,8 @@
 @layer utilities {
   .text-gray-500, .text-gray-600, p.text-gray-700 { color: #8f99a8; }
   .placeholder-gray-600::placeholder { color: #8f99a8; }
-  .text-red-400\/50, .text-red-400\/60 { color: #e8848b; }
-  .text-green-400\/60 { color: #4fce8f; }
+  .text-red-400\/50, .text-red-400\/60, .text-red-400\/70 { color: #e8848b; }
+  .text-green-400\/50, .text-green-400\/60, .text-green-400\/70 { color: #4fce8f; }
 }
 
 /* Animations */

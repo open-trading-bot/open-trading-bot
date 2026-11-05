@@ -276,13 +276,13 @@ export function Positions() {
           onClick={() => { setTab('open'); setOpenPage(0); }}
           className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${tab === 'open' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
         >
-          {t('open')} <span className="ml-1 text-xs opacity-70">({filteredOpen.length})</span>
+          {t('open')} <span className="ml-1 text-xs">({filteredOpen.length})</span>
         </button>
         <button
           onClick={() => { setTab('closed'); setClosedPage(0); }}
           className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${tab === 'closed' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
         >
-          {t('closed')} <span className="ml-1 text-xs opacity-70">({closedTotal})</span>
+          {t('closed')} <span className="ml-1 text-xs">({closedTotal})</span>
         </button>
       </div>
 
