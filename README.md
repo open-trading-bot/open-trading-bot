@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/open-trading-bot/open-trading-bot)](https://github.com/open-trading-bot/open-trading-bot/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-An algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It has a dashboard for users and a backoffice for admins.
+This is an algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It has a dashboard for users and a backoffice for admins.
 
 Test a strategy on historical data, with fees and slippage. Then run it in paper mode or on the Bybit testnet, with your risk limits.
 
