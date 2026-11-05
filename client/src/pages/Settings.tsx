@@ -382,7 +382,7 @@ export function Settings() {
                 }`}
               >
                 <span className="font-semibold text-center leading-tight">{t(meta.label as any)}</span>
-                <span className={`text-[10px] font-mono ${isActive ? 'opacity-80' : 'opacity-50'}`}>${preset.tradeAmount.toLocaleString()}/{t('perTrade' as any)}</span>
+                <span className="text-[10px] font-mono">${preset.tradeAmount.toLocaleString()}/{t('perTrade' as any)}</span>
               </button>
             );
           })}

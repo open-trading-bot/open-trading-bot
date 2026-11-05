@@ -58,7 +58,7 @@ export function Strategies() {
                 className={`rounded-xl p-4 border transition-all ${
                   s.enabled
                     ? `${colors.bg} ${colors.border}`
-                    : 'bg-gray-900 border-gray-800/50 opacity-60'
+                    : 'bg-gray-900 border-gray-800/50 opacity-80'
                 }`}
               >
                 <div className="flex items-center justify-between">
