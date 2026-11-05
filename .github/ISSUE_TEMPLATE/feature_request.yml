@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a new feature or a change.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Write who has the problem and when it occurs.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What change do you suggest?
+    validations:
+      required: true
+  - type: dropdown
+    id: trading
+    attributes:
+      label: Does this change affect trading or risk management?
+      description: Examples are strategies, orders, stop loss and position limits.
+      options:
+        - "No"
+        - "Yes"
+        - I do not know
+    validations:
+      required: true
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Do you want to make this change?
+      options:
+        - "Yes"
+        - "No"
+        - I need help to start

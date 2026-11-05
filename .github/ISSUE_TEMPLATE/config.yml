@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/open-trading-bot/open-trading-bot/discussions/categories/q-a
+    about: Use Q&A in Discussions for questions about setup and use.
+  - name: Report a security vulnerability
+    url: https://github.com/open-trading-bot/open-trading-bot/security/advisories/new
+    about: Report vulnerabilities in private. Do not open a public issue.
