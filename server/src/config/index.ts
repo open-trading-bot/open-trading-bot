@@ -1,4 +1,4 @@
-import { getAllStrategies } from '../engine/strategies/index.js';
+import { getAllStrategies } from '@open-trading-bot/strategies';
 import { DEFAULTS, DEFAULT_ASSETS, ERROR_MSG } from '../utils/constants.js';
 import type { BotConfig, BotMode } from '../types/index.js';
 import { isValidMasterKey } from '../utils/crypto.js';
