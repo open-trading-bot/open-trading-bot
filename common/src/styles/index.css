@@ -15,6 +15,7 @@
 .light .bg-gray-800\/60 { background-color: rgba(241, 245, 249, 0.8) !important; }
 .light .bg-gray-800\/80 { background-color: rgba(241, 245, 249, 0.9) !important; }
 .light .bg-gray-700 { background-color: #e2e8f0 !important; }
+.light .bg-gray-700\/60 { background-color: rgba(226, 232, 240, 0.8) !important; }
 .light .border-gray-800 { border-color: #e2e8f0 !important; }
 .light .border-gray-800\/50 { border-color: rgba(226, 232, 240, 0.7) !important; }
 .light .border-gray-800\/30 { border-color: rgba(226, 232, 240, 0.5) !important; }
@@ -43,6 +44,9 @@
 .light .text-gray-700 { color: #cbd5e1 !important; }
 .light p.text-gray-700 { color: #5b6b82 !important; }
 .light .placeholder-gray-600::placeholder { color: #5b6b82 !important; }
+.light .signal-badge-green { color: #166534 !important; }
+.light .signal-badge-red { color: #b91c1c !important; }
+.light .signal-badge-gray { color: #475569 !important; }
 /* Colored text with a contrast of at least 4.5:1 on the light backgrounds. */
 .light .text-red-200\/80,
 .light .text-red-300,
@@ -55,7 +59,7 @@
 .light .text-green-400\/50,
 .light .text-green-400\/60,
 .light .text-green-400\/70,
-.light .text-emerald-400 { color: #15803d !important; }
+.light .text-emerald-400 { color: #166534 !important; }
 .light .text-blue-200\/80,
 .light .text-blue-300,
 .light .text-blue-300\/90,

@@ -509,7 +509,7 @@ export function Dashboard() {
                           <CryptoIcon symbol={s.symbol} size={20} />
                           <span className="text-sm font-semibold">{s.symbol}</span>
                           <span
-                            className="text-xs font-bold uppercase px-2 py-0.5 rounded-full"
+                            className={`signal-badge-${actionColor} text-xs font-bold uppercase px-2 py-0.5 rounded-full`}
                             style={{
                               color:
                                 actionColor === 'green'
