@@ -8,7 +8,7 @@ This is an algorithmic crypto trading bot for [Bybit](https://www.bybit.com). It
 
 Test a strategy on historical data, with fees and slippage. Then run it in paper mode or on the Bybit testnet, with your risk limits.
 
-**[Quick start](#quick-start-local)** · [Run with Docker](#running-with-docker) · [Q&A](https://github.com/open-trading-bot/open-trading-bot/discussions/categories/q-a) · [Contributing](CONTRIBUTING.md)
+**[Quick start](#quick-start-local)** · [Live demo](https://opentradingbot.xyz) · [Run with Docker](#running-with-docker) · [Q&A](https://github.com/open-trading-bot/open-trading-bot/discussions/categories/q-a) · [Contributing](CONTRIBUTING.md)
 
 > **Disclaimer:** Use this software only for education and research. It is **not financial advice**.
 > Crypto trading has a high risk of loss. You use this software at your own risk.
