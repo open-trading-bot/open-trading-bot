@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@open-trading-bot/strategies": "^0.1.0",
+    "@open-trading-bot/strategies": "^0.1.4",
     "better-sqlite3": "^11.8.1",
     "ccxt": "^4.4.65",
     "cors": "^2.8.5",
